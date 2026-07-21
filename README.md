@@ -1,265 +1,353 @@
-# ECommerce Website - Full Stack Application
+# 🛍️ FootCap - MERN E-Commerce Platform
 
-A modern, full-stack e-commerce platform built with React, Node.js, Express, and MongoDB. Features include user authentication, product catalog, shopping cart, wishlist, order management, and a comprehensive admin panel.
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
+![Node.js](https://img.shields.io/badge/Node.js-Express-green?logo=node.js)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Status](https://img.shields.io/badge/Status-Live-success)
 
-## 🚀 Features
+A production-ready **Full Stack MERN E-Commerce Platform** built with **React.js, Node.js, Express.js, and MongoDB**. The application provides a modern online shopping experience with secure authentication, product management, shopping cart, wishlist, online payments, and an admin dashboard.
 
-### User Features
-- ✅ User Authentication (Register/Login with JWT)
-- ✅ Product Catalog with Filtering & Search
-- ✅ Shopping Cart (Database persistence)
-- ✅ Wishlist Management
-- ✅ Order Placement & History
-- ✅ User Profile Management
-- ✅ Password Reset Functionality
-- ✅ Responsive Design
+---
 
-### Admin Features
-- ✅ Admin Dashboard with Analytics
-- ✅ Product Management (Add/Edit/Delete)
-- ✅ Order Management
-- ✅ User Management
-- ✅ Notification System
-- ✅ Admin Role-based Access Control
+## 🌐 Live Demo
 
-### Payment Integration
-- ✅ Razorpay Payment Gateway
-- ✅ Secure Checkout Process
+### 🔗 Frontend
+https://footcap-store.netlify.app/
 
-## 📁 Project Structure
+### 🔗 Backend API
+https://footcap-backend.onrender.com/
+
+---
+
+## 📸 Screenshots
+
+> Add your project screenshots here.
+
+| Home Page | Product Details |
+|------------|-----------------|
+| ![](screenshots/home.png) | ![](screenshots/product.png) |
+
+| Cart | Admin Dashboard |
+|------|-----------------|
+| ![](screenshots/cart.png) | ![](screenshots/admin.png) |
+
+---
+
+# ✨ Features
+
+### 👤 Authentication
+
+- User Registration
+- Secure Login
+- JWT Authentication
+- Protected Routes
+- Role-Based Authorization
+- Password Encryption using bcrypt
+
+---
+
+### 🛒 Shopping
+
+- Browse Products
+- Product Search
+- Category Filter
+- Price Filter
+- Product Details
+- Related Products
+- Wishlist
+- Shopping Cart
+- Quantity Management
+
+---
+
+### 💳 Payments
+
+- Razorpay Payment Gateway
+- Secure Checkout
+- Order Placement
+- Order History
+
+---
+
+### 📦 Order Management
+
+- Place Orders
+- View Previous Orders
+- Order Status
+- Order Details
+
+---
+
+### 👨‍💼 Admin Dashboard
+
+- Dashboard Overview
+- Product Management
+- Add Products
+- Update Products
+- Delete Products
+- Order Management
+- User Management
+- Inventory Management
+
+---
+
+### 📱 User Experience
+
+- Responsive Design
+- Mobile Friendly
+- Modern UI
+- Loading Skeletons
+- Toast Notifications
+- Error Handling
+
+---
+
+# 🛠️ Tech Stack
+
+## Frontend
+
+- React.js
+- React Router DOM
+- Redux Toolkit
+- Axios
+- Tailwind CSS
+- React Icons
+
+## Backend
+
+- Node.js
+- Express.js
+- MongoDB Atlas
+- Mongoose
+- JWT
+- bcryptjs
+- Multer
+- Cloudinary
+- Razorpay
+- Nodemailer
+
+## Deployment
+
+- Netlify
+- Render
+- MongoDB Atlas
+
+---
+
+# 📂 Project Structure
 
 ```
-ECommerceWebsite/
-├── .gitignore
-├── .env.example
-├── README.md
+FootCap
 │
-├── client/                          # React Frontend
-│   ├── .env.example
-│   ├── .gitignore
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   ├── index.html
-│   │
+├── client/
 │   ├── public/
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── firebase.js
-│       │
-│       ├── admin/                   # Admin panel components
-│       ├── assets/                  # Images and static assets
-│       ├── components/              # Reusable UI components
-│       ├── context/                 # React Context (Cart, Order, Wishlist)
-│       ├── data/                    # Product data
-│       ├── pages/                   # Page components
-│       └── utils/                   # API and auth utilities
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── redux/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   └── utils/
 │
-└── server/                          # Node.js Backend
-    ├── .env.example
-    ├── .gitignore
-    ├── package.json
-    ├── server.js
-    │
-    ├── controllers/                 # Route controllers
-    ├── middleware/                  # Express middleware
-    ├── models/                      # Mongoose models
-    ├── routes/                      # API routes
-    ├── services/                    # Business logic
-    ├── utils/                       # Utilities
-    ├── tests/                       # Test files
-    └── scripts/                     # Database scripts
-        ├── seedProducts.js
-        └── createAdmin.js
+├── server/
+│   ├── config/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── scripts/
+│   ├── uploads/
+│   └── utils/
+│
+├── README.md
+└── package.json
 ```
 
-## 🛠️ Setup Instructions
+---
 
-### Prerequisites
-- Node.js (v16 or higher)
-- MongoDB (local or Atlas)
-- npm or yarn
+# 🚀 Getting Started
 
-### Backend Setup
+## Clone Repository
 
-1. Navigate to server directory:
 ```bash
-cd server
+git clone https://github.com/shreymehrotra07/FootCap.git
 ```
 
-2. Install dependencies:
+```
+cd FootCap
+```
+
+---
+
+## Install Dependencies
+
+### Frontend
+
 ```bash
+cd client
 npm install
 ```
 
-3. Create `.env` file from example:
+### Backend
+
 ```bash
-cp .env.example .env
+cd ../server
+npm install
 ```
 
-4. Update `.env` with your configuration:
+---
+
+## Environment Variables
+
+Create a `.env` file inside the server directory.
+
 ```env
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/ecommerce
-JWT_SECRET=your-super-secret-jwt-key-here-make-it-long-and-random
-JWT_COOKIE_EXPIRES_DAYS=7
-CLIENT_URL=http://localhost:5173
+PORT=
+
+MONGODB_URI=
+
+JWT_SECRET=
+
+JWT_REFRESH_SECRET=
+
+RAZORPAY_KEY_ID=
+
+RAZORPAY_KEY_SECRET=
+
+CLOUDINARY_CLOUD_NAME=
+
+CLOUDINARY_API_KEY=
+
+CLOUDINARY_API_SECRET=
+
+EMAIL_USER=
+
+EMAIL_PASS=
+
+CLIENT_URL=
 ```
 
-5. Seed the database with products:
+---
+
+## Run Frontend
+
+```bash
+cd client
+npm run dev
+```
+
+---
+
+## Run Backend
+
+```bash
+cd server
+npm start
+```
+
+---
+
+## Seed Database
+
 ```bash
 npm run seed
 ```
 
-6. Create an admin user:
-```bash
-npm run create-admin
-```
+This will generate and insert **2000+ products** into MongoDB.
 
-7. Start the server:
-```bash
-npm run dev
-```
+---
 
-The server will run on `http://localhost:5000`
+# 📊 API Modules
 
-### Frontend Setup
+- Authentication
+- Users
+- Products
+- Categories
+- Wishlist
+- Cart
+- Orders
+- Payments
+- Reviews
+- Admin
 
-1. Navigate to client directory:
-```bash
-cd client
-```
+---
 
-2. Install dependencies:
-```bash
-npm install
-```
+# 🔐 Security Features
 
-3. Create `.env` file from example:
-```bash
-cp .env.example .env
-```
+- JWT Authentication
+- Password Hashing
+- Protected Routes
+- Role-Based Access Control
+- Input Validation
+- Rate Limiting
+- Secure Environment Variables
+- CORS Configuration
 
-4. Update `.env` with your configuration:
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_FIREBASE_API_KEY=your-firebase-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-firebase-auth-domain
-VITE_FIREBASE_PROJECT_ID=your-firebase-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-firebase-storage-bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your-firebase-messaging-sender-id
-VITE_FIREBASE_APP_ID=your-firebase-app-id
-```
+---
 
-5. Start the development server:
-```bash
-npm run dev
-```
+# 🎯 Future Improvements
 
-The frontend will run on `http://localhost:5173`
+- Product Reviews & Ratings
+- Coupon System
+- Email Verification
+- Multi-Vendor Support
+- AI Product Recommendation
+- Sales Analytics
+- PWA Support
+- Dark Mode
+- Multi-language Support
 
-## 📊 Database Models
+---
 
-- **User**: User accounts and authentication
-- **Product**: Product catalog with categories, sizes, colors
-- **Cart**: Shopping cart items with user association
-- **Wishlist**: User wishlists for favorite products
-- **Order**: Order history with status tracking
-- **Notification**: Admin notifications for system events
+# 🤝 Contributing
 
-## 🔌 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/forgot-password` - Request password reset
-- `POST /api/auth/reset-password` - Reset password
-
-### Users
-- `GET /api/users/profile` - Get user profile (Protected)
-- `PUT /api/users/profile` - Update user profile (Protected)
-
-### Products
-- `GET /api/products` - Get all products
-- `GET /api/products/:id` - Get single product
-
-### Cart
-- `GET /api/cart/:userId` - Get user's cart
-- `POST /api/cart/add` - Add item to cart
-- `PUT /api/cart/update` - Update cart item quantity
-- `DELETE /api/cart/remove` - Remove item from cart
-- `DELETE /api/cart/clear/:userId` - Clear cart
-
-### Wishlist
-- `GET /api/wishlist/:userId` - Get user's wishlist
-- `POST /api/wishlist/toggle` - Toggle product in wishlist
-- `GET /api/wishlist/check/:userId/:productId` - Check if product is wishlisted
-
-### Orders
-- `GET /api/orders/:userId` - Get user's orders
-- `POST /api/orders/create` - Create new order
-- `GET /api/orders/single/:orderId` - Get single order
-
-### Payment
-- `POST /api/payment/create-order` - Create Razorpay order
-- `POST /api/payment/verify` - Verify payment
-
-### Admin (Protected - Admin Only)
-- `POST /api/admin/products` - Create product
-- `PUT /api/admin/products/:id` - Update product
-- `DELETE /api/admin/products/:id` - Delete product
-- `GET /api/admin/orders` - Get all orders
-- `PUT /api/admin/orders/:id` - Update order status
-- `GET /api/admin/users` - Get all users
-- `DELETE /api/admin/users/:id` - Delete user
-- `GET /api/admin/notifications` - Get notifications
-- `POST /api/admin/notifications` - Create notification
-
-## 🔒 Security Features
-
-- JWT-based authentication with HTTP-only cookies
-- Password hashing with bcrypt
-- Rate limiting on API endpoints
-- Input validation and sanitization
-- XSS protection
-- MongoDB query sanitization
-- CORS configuration
-- Helmet security headers
-
-## 🚀 Deployment
-
-### Backend (Render/Heroku/Railway)
-1. Set environment variables in your platform
-2. Connect your MongoDB Atlas database
-3. Deploy the server directory
-
-### Frontend (Vercel/Netlify)
-1. Set VITE_API_URL to your backend URL
-2. Deploy the client directory
-3. Configure Firebase settings
-
-## 📝 Notes
-
-- The application supports both logged-in users (data saved to database) and guest users (data saved to localStorage)
-- All cart, wishlist, and order operations are automatically synced with the database when a user is logged in
-- Make sure MongoDB is installed and running before starting the backend server
-- Use `.env.example` files as templates for your environment variables
-- Never commit `.env` files to version control
-
-## 🤝 Contributing
+Contributions are welcome.
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+
+2. Create a feature branch
+
+```bash
+git checkout -b feature/NewFeature
+```
+
+3. Commit your changes
+
+```bash
+git commit -m "Added New Feature"
+```
+
+4. Push to GitHub
+
+```bash
+git push origin feature/NewFeature
+```
+
 5. Open a Pull Request
+
+---
+
+# 👨‍💻 Author
+
+### Shrey Mehrotra
+
+**Aspiring Full Stack Developer**
+
+- GitHub: https://github.com/shreymehrotra07
+- LinkedIn: https://linkedin.com/in/shreymehrotra07
+
+---
+
+# ⭐ Support
+
+If you found this project helpful, please consider giving it a ⭐ on GitHub.
+
+It motivates me to build more production-quality open-source projects.
+
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License.
-
-## 📧 Support
-
-For support, email your-email@example.com or open an issue in the repository.
