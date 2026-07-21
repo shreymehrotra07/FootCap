@@ -26,11 +26,11 @@ https://footcap-backend.onrender.com/
 
 | Home Page | Product Details |
 |------------|-----------------|
-| ![](screenshots/home.png) | ![](screenshots/product.png) |
+| ![](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_154956_b57hfl) | ![](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_162513_wvxprm) |
 
-| Cart | Admin Dashboard |
+| Cart | Admin Login |
 |------|-----------------|
-| ![](screenshots/cart.png) | ![](screenshots/admin.png) |
+| ![]([screenshots/cart.png](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_162633_pxfxys)) | ![](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_163937_jmhfzj) |
 
 ---
 
