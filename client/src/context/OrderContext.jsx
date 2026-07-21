@@ -87,15 +87,15 @@ export const OrderProvider = ({ children }) => {
   const addOrder = async (orderData) => {
     // Format items for API
     const formattedItems = orderData.items.map((item) => ({
-      productId: item.id,
+      productId: item.id || item.productId || item._id || null,
       name: item.name,
-      quantity: item.quantity,
-      size: item.size,
+      quantity: item.quantity || item.qty || 1,
+      size: item.size || 9,
       price:
         item.priceNumeric !== undefined
           ? item.priceNumeric
           : extractPrice(item.price),
-      image: item.image,
+      image: item.image || '',
     }));
 
     const orderPayload = {
@@ -105,6 +105,7 @@ export const OrderProvider = ({ children }) => {
       paymentMethod: orderData.paymentMethod || "cod",
       paymentId: orderData.paymentId || null,
       razorpayOrderId: orderData.razorpayOrderId || null,
+      razorpaySignature: orderData.razorpaySignature || null,
     };
 
     try {

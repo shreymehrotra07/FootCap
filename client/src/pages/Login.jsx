@@ -5,7 +5,6 @@ import { userAPI } from "../utils/api";
 import Toast from "../components/Toast";
 import { FiEye, FiEyeOff, FiMail, FiLock, FiArrowRight } from "react-icons/fi";
 import adminAuth from "../utils/adminAuth";
-// 🔥 Firebase imports for Google Auth
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 
@@ -30,73 +29,35 @@ function Login() {
     }, 2500);
   };
 
-  // 🔥 Google Login Handler (only for existing users)
+  // Google Login Handler
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
 
-      // 1️⃣ Firebase Google Auth
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
-      // 2️⃣ Send to backend to check if user exists
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/google-login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: firebaseUser.displayName,
-          email: firebaseUser.email,
-          googleId: firebaseUser.uid,
-          photo: firebaseUser.photoURL,
-        }),
+      const data = await userAPI.googleAuth({
+        name: firebaseUser.displayName,
+        email: firebaseUser.email,
+        googleId: firebaseUser.uid,
+        photo: firebaseUser.photoURL,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // If user doesn't exist, show specific message
-        if (response.status === 404) {
-          showToast("Account not registered. Please register first.", "error");
-          setLoading(false);
-          return;
-        }
-        
-        throw new Error(data.message || "Google login failed");
-      }
-
-      // 3️⃣ Store user data (token is in HTTP-only cookie)
       localStorage.setItem("userId", data.user.id);
       localStorage.setItem("userName", data.user.name);
       localStorage.setItem("userEmail", data.user.email);
-      
-      // Debug: Log the stored data
-      console.log('Google Login - Stored user data:', {
-        userId: data.user.id,
-        userName: data.user.name,
-        userEmail: data.user.email
-      });
-      console.log('Google Login - localStorage after setting:', {
-        userId: localStorage.getItem("userId"),
-        userName: localStorage.getItem("userName"),
-        userEmail: localStorage.getItem("userEmail")
-      });
 
-      // 4️⃣ Success and redirect
       showToast("Login successful with Google!", "success");
       setTimeout(() => {
-        // Ensure data is set before navigation
-        console.log('Google Login - Before navigation, localStorage:', {
-          userId: localStorage.getItem("userId"),
-          userName: localStorage.getItem("userName"),
-          userEmail: localStorage.getItem("userEmail")
-        });
         navigate("/");
-      }, 1500); // Increased delay to ensure data is set
+      }, 1200);
 
     } catch (error) {
       console.error("Google Login Error:", error);
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return;
+      }
       showToast(
         error.response?.data?.message ||
         error.message ||
@@ -108,7 +69,7 @@ function Login() {
     }
   };
 
-  // ✅ Normal Email/Password Login
+  // Email/Password Login Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -124,34 +85,14 @@ function Login() {
 
       adminAuth.clearAdminAuth();
 
-      // In cookie-based auth, token is stored in HTTP-only cookie
-      // We still store user info in localStorage for UI purposes
       localStorage.setItem("userId", res.user.id);
       localStorage.setItem("userName", res.user.name);
       localStorage.setItem("userEmail", res.user.email);
-      
-      // Debug: Log the stored data
-      console.log('Email Login - Stored user data:', {
-        userId: res.user.id,
-        userName: res.user.name,
-        userEmail: res.user.email
-      });
-      console.log('Email Login - localStorage after setting:', {
-        userId: localStorage.getItem("userId"),
-        userName: localStorage.getItem("userName"),
-        userEmail: localStorage.getItem("userEmail")
-      });
 
       showToast("Login successful!", "success");
       setTimeout(() => {
-        // Ensure data is set before navigation
-        console.log('Email Login - Before navigation, localStorage:', {
-          userId: localStorage.getItem("userId"),
-          userName: localStorage.getItem("userName"),
-          userEmail: localStorage.getItem("userEmail")
-        });
         navigate("/");
-      }, 1500); // Increased delay to ensure data is set
+      }, 1200);
     } catch (err) {
       showToast(
         err.response?.data?.message || "Login failed. Please try again.",
@@ -161,8 +102,6 @@ function Login() {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="auth-wrapper-blue">
@@ -200,6 +139,7 @@ function Login() {
               type="button"
               className="auth-toggle-password"
               onClick={() => setShowPassword((s) => !s)}
+              aria-label="Toggle Password Visibility"
             >
               {showPassword ? <FiEyeOff /> : <FiEye />}
             </button>
@@ -223,12 +163,10 @@ function Login() {
           </button>
         </form>
 
-        {/* 🔹 OR DIVIDER */}
         <div className="auth-divider">
           <span>OR</span>
         </div>
 
-        {/* 🔥 GOOGLE SIGN IN BUTTON */}
         <button
           type="button"
           onClick={handleGoogleLogin}

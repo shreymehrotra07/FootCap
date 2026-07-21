@@ -204,7 +204,7 @@ function AdminEditProduct() {
 
   if (loading) {
     return (
-      <div className="admin-content">
+      <div className="admin-edit-product">
         <div className="admin-page-header">
           <button 
             className="btn btn-back"
@@ -223,15 +223,19 @@ function AdminEditProduct() {
   }
 
   return (
-    <div className="admin-content">
-      <div className="admin-page-header">
+    <div className="admin-edit-product">
+      <div className="admin-page-header form-header">
+        <div className="page-title">
+          <h1>Edit Product</h1>
+          <p>Update product specifications, pricing, and image assets</p>
+        </div>
         <button 
-          className="btn btn-back"
+          type="button"
+          className="btn btn-outline btn-back"
           onClick={() => navigate("/admin/products")}
         >
           <FiArrowLeft /> Back to Products
         </button>
-        <h1>Edit Product</h1>
       </div>
 
       {error && (
@@ -246,7 +250,8 @@ function AdminEditProduct() {
         </div>
       )}
 
-      <form className="admin-form" onSubmit={handleSubmit}>
+      <div className="admin-glass-form-card">
+        <form className="admin-form" onSubmit={handleSubmit}>
         <div className="form-grid">
           {/* Left Column */}
           <div className="form-column">
@@ -499,7 +504,8 @@ function AdminEditProduct() {
         </div>
       </form>
     </div>
-  );
+  </div>
+);
 }
 
 export default AdminEditProduct;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useOrder } from "../context/OrderContext";
+import { useNavigate } from "react-router-dom";
 import {
   FiPackage,
   FiTruck,
@@ -9,6 +10,10 @@ import {
   FiPhone,
   FiX,
   FiArrowRight,
+  FiCreditCard,
+  FiUser,
+  FiCalendar,
+  FiRotateCcw
 } from "react-icons/fi";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -16,7 +21,15 @@ import "./Orders.css";
 
 /* ================= HELPERS ================= */
 
-// ✅ Safe price formatter
+function getImageUrl(imagePath) {
+  if (!imagePath) return '';
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+  const filename = imagePath.split('/').pop();
+  return new URL(`../assets/images/${filename}`, import.meta.url).href;
+}
+
 function formatPrice(amount) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -25,38 +38,42 @@ function formatPrice(amount) {
   }).format(amount || 0);
 }
 
-// ✅ Calculate total from items (single source of truth)
-const calculateOrderTotal = (items = []) => {
+const getItemQty = (item) => item.quantity || item.qty || 1;
+
+const calculateOrderTotal = (items = [], orderTotal) => {
+  if (orderTotal) return orderTotal;
   return items.reduce(
-    (sum, item) => sum + (item.price || 0) * (item.qty || 1),
+    (sum, item) => sum + (item.price || 0) * getItemQty(item),
     0
   );
 };
 
-// ✅ Safe Order ID getter (uses orderId field)
 const getOrderId = (order) => {
   return order?.orderId || order?.id || order?._id || "UNKNOWN";
 };
 
-/* ================= COMPONENT ================= */
+const getPaymentLabel = (method) => {
+  if (!method) return "Cash on Delivery";
+  if (method === "razorpay" || method === "card") return "Online Payment (Razorpay)";
+  return "Cash on Delivery";
+};
 
 function Orders() {
-  const { orders } = useOrder();
+  const navigate = useNavigate();
+  const { orders, loading } = useOrder();
   const [trackingOrder, setTrackingOrder] = useState(null);
 
-  // Scroll to top when page loads
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-
-  // ✅ ONLY 4 STATUSES
   const getStatusDetails = (status) => {
     const statusMap = {
-      Pending: { color: "#f59e0b", text: "Order Placed" },
-      Shipped: { color: "#8b5cf6", text: "Shipped" },
-      Delivered: { color: "#10b981", text: "Delivered" },
-      Cancelled: { color: "#ef4444", text: "Cancelled" },
+      Pending: { color: "#fbbf24", text: "Order Placed", bg: "rgba(251, 191, 36, 0.12)" },
+      Paid: { color: "#fbbf24", text: "Order Placed", bg: "rgba(251, 191, 36, 0.12)" },
+      Shipped: { color: "#a855f7", text: "Shipped", bg: "rgba(168, 85, 247, 0.12)" },
+      Delivered: { color: "#10b981", text: "Delivered", bg: "rgba(16, 185, 129, 0.12)" },
+      Cancelled: { color: "#FF2A5F", text: "Cancelled", bg: "rgba(255, 42, 95, 0.12)" },
     };
     return statusMap[status] || statusMap.Pending;
   };
@@ -67,103 +84,156 @@ function Orders() {
       <div className="orders-container">
         <div className="orders-header-section">
           <h1>My Orders</h1>
-          <p>View your order history and track deliveries</p>
+          <p>Track your purchases, manage deliveries, and view itemized order invoices</p>
         </div>
 
-        {orders.length === 0 ? (
+        {loading ? (
+          <div className="orders-loading-state">
+            <div className="orders-spinner"></div>
+            <p>Loading your orders...</p>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="orders-empty-state">
             <FiPackage className="empty-icon" />
             <h2>No orders found</h2>
-            <p>You haven't placed any orders yet.</p>
+            <p>You haven't placed any orders yet. Explore our luxury footwear collection!</p>
             <button
               className="shop-now-btn"
-              onClick={() => (window.location.href = "/")}
+              onClick={() => navigate("/")}
             >
               Explore Products <FiArrowRight />
             </button>
           </div>
         ) : (
           <div className="orders-grid-layout">
-            {orders.map((order) => (
-              <div
-                className="order-premium-card"
-                key={getOrderId(order)}
-              >
-                {/* ================= TOP ================= */}
-                <div className="card-top">
-                  <div className="order-main-info">
-                    <span className="order-id-label">Order ID</span>
-                    <h3>{getOrderId(order)}</h3>
-                    <span className="order-date-label">
-                      {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
+            {orders.map((order) => {
+              const currentStatus = getStatusDetails(order.status);
+              const orderIdStr = getOrderId(order);
+              const totalVal = calculateOrderTotal(order.items, order.totalAmount);
+              const recipientName = order.deliveryDetails?.name || "Customer";
+              const formattedDate = new Date(order.createdAt || Date.now()).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
 
-                  <div
-                    className="status-pill"
-                    style={{
-                      backgroundColor: `${getStatusDetails(order.status).color}20`,
-                      color: getStatusDetails(order.status).color,
-                      borderColor: `${getStatusDetails(order.status).color}40`,
-                    }}
-                  >
-                    {order.status === "Delivered" ? (
-                      <FiCheckCircle />
-                    ) : (
-                      <FiClock />
-                    )}
-                    {getStatusDetails(order.status).text}
-                  </div>
-                </div>
-
-                {/* ================= ITEMS ================= */}
-                <div className="order-items-preview">
-                  {order.items.map((item, index) => (
-                    <div className="preview-item" key={index}>
-                      <div className="item-text">
-                        <h4>{item.name}</h4>
-                        <p>
-                          Size: UK {item.size} • Qty: {item.qty}
-                        </p>
+              return (
+                <div className="order-premium-card" key={orderIdStr}>
+                  {/* ================= HEADER BAR ================= */}
+                  <div className="order-card-header">
+                    <div className="header-meta-group">
+                      <div className="meta-item">
+                        <span className="meta-label">ORDER PLACED</span>
+                        <span className="meta-value"><FiCalendar /> {formattedDate}</span>
                       </div>
+                      <div className="meta-item">
+                        <span className="meta-label">TOTAL</span>
+                        <span className="meta-value highlight">{formatPrice(totalVal)}</span>
+                      </div>
+                      <div className="meta-item recipient-item">
+                        <span className="meta-label">SHIP TO</span>
+                        <span className="meta-value"><FiUser /> {recipientName}</span>
+                      </div>
+                      <div className="meta-item">
+                        <span className="meta-label">PAYMENT</span>
+                        <span className="meta-value payment-badge">
+                          <FiCreditCard /> {getPaymentLabel(order.paymentMethod)}
+                        </span>
+                      </div>
+                    </div>
 
-                      <span className="item-price-val">
-                        {formatPrice(
-                          (item.price || 0) * (item.qty || 1)
-                        )}
+                    <div className="header-right-group">
+                      <span className="order-id-code">ORDER # {orderIdStr}</span>
+                    </div>
+                  </div>
+
+                  {/* ================= PRODUCT ITEMS ================= */}
+                  <div className="order-items-list">
+                    {order.items.map((item, index) => {
+                      const qty = getItemQty(item);
+                      const itemTotal = (item.price || 0) * qty;
+
+                      return (
+                        <div className="order-product-row" key={index}>
+                          <div className="product-image-box">
+                            <img src={getImageUrl(item.image)} alt={item.name} />
+                          </div>
+
+                          <div className="product-info-col">
+                            <h4 className="product-title">{item.name}</h4>
+                            <div className="product-tags">
+                              <span className="attr-tag">Size: UK {item.size}</span>
+                              <span className="attr-tag">Qty: {qty}</span>
+                            </div>
+                            <div className="item-status-message">
+                              {order.status === "Delivered" ? (
+                                <span className="status-note success">
+                                  <FiCheckCircle /> Delivered on {formattedDate}
+                                </span>
+                              ) : order.status === "Cancelled" ? (
+                                <span className="status-note error">
+                                  Order Cancelled
+                                </span>
+                              ) : (
+                                <span className="status-note pending">
+                                  <FiTruck /> Arriving soon • Expected in 3-5 business days
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="product-price-col">
+                            <span className="price-label">{formatPrice(itemTotal)}</span>
+                            {qty > 1 && (
+                              <span className="unit-price-sub">({formatPrice(item.price)} each)</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ================= FOOTER SUMMARY & ACTIONS ================= */}
+                  <div className="order-card-footer">
+                    <div className="delivery-address-snippet">
+                      <FiMapPin className="pin-icon" />
+                      <span>
+                        <strong>{recipientName}</strong> • {order.deliveryDetails?.address}, {order.deliveryDetails?.city} - {order.deliveryDetails?.pincode}
                       </span>
                     </div>
-                  ))}
-                </div>
 
-                {/* ================= BOTTOM ================= */}
-                <div className="card-bottom">
-                  <div className="order-total-box">
-                    <span>Grand Total</span>
-                    <strong>
-                      {formatPrice(
-                        calculateOrderTotal(order.items)
-                      )}
-                    </strong>
+                    <div className="footer-actions-group">
+                      <div
+                        className="status-pill-badge"
+                        style={{
+                          backgroundColor: currentStatus.bg,
+                          color: currentStatus.color,
+                          borderColor: `${currentStatus.color}40`,
+                        }}
+                      >
+                        {order.status === "Delivered" ? (
+                          <FiCheckCircle />
+                        ) : (
+                          <FiClock />
+                        )}
+                        {currentStatus.text}
+                      </div>
+
+                      <button
+                        className="track-order-btn"
+                        onClick={() => setTrackingOrder(order)}
+                      >
+                        Track Shipment & Details
+                      </button>
+                    </div>
                   </div>
-
-                  <button
-                    className="track-order-btn"
-                    onClick={() => setTrackingOrder(order)}
-                  >
-                    Track Shipment
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {/* ================= TRACKING MODAL ================= */}
+        {/* ================= ENHANCED TRACKING & INVOICE MODAL ================= */}
         {trackingOrder && (
           <div
             className="modal-overlay"
@@ -175,12 +245,14 @@ function Orders() {
             >
               <div className="modal-header">
                 <div>
-                  <h3>Order Tracking</h3>
-                  <p>Order {getOrderId(trackingOrder)} • {new Date(trackingOrder.createdAt).toLocaleDateString("en-IN", {
+                  <h3>Order Details & Tracking</h3>
+                  <p>
+                    Order ID: <strong>{getOrderId(trackingOrder)}</strong> • Placed on {new Date(trackingOrder.createdAt || Date.now()).toLocaleDateString("en-IN", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",
-                    })}</p>
+                    })}
+                  </p>
                 </div>
                 <button
                   className="modal-close"
@@ -191,75 +263,110 @@ function Orders() {
               </div>
 
               <div className="modal-body">
-                {/* ADDRESS */}
-                <div className="delivery-card">
-                  <div className="delivery-line">
-                    <FiMapPin />
-                    <div>
-                      <p>Delivery Address</p>
-                      <span>
-                        {trackingOrder.deliveryDetails?.address},{" "}
-                        {trackingOrder.deliveryDetails?.city} -{" "}
-                        {trackingOrder.deliveryDetails?.pincode}
-                      </span>
+                {/* RECIPIENT & PAYMENT GRID */}
+                <div className="info-cards-grid">
+                  <div className="info-card">
+                    <div className="card-title-row">
+                      <FiMapPin />
+                      <h4>Delivery Details</h4>
                     </div>
+                    <p className="recipient-name">{trackingOrder.deliveryDetails?.name}</p>
+                    <p className="address-text">
+                      {trackingOrder.deliveryDetails?.address}, {trackingOrder.deliveryDetails?.city} - {trackingOrder.deliveryDetails?.pincode}
+                    </p>
+                    <p className="contact-text"><FiPhone /> {trackingOrder.deliveryDetails?.phone}</p>
                   </div>
 
-                  <div className="delivery-line">
-                    <FiPhone />
-                    <div>
-                      <p>Contact Number</p>
-                      <span>
-                        {trackingOrder.deliveryDetails?.phone}
-                      </span>
+                  <div className="info-card">
+                    <div className="card-title-row">
+                      <FiCreditCard />
+                      <h4>Payment Information</h4>
                     </div>
+                    <p className="payment-method-title">
+                      {getPaymentLabel(trackingOrder.paymentMethod)}
+                    </p>
+                    {trackingOrder.paymentId && (
+                      <p className="payment-id-tag">Transaction ID: {trackingOrder.paymentId}</p>
+                    )}
+                    <p className="payment-status-tag">
+                      Status: <span className="status-highlight">{trackingOrder.paymentStatus || "Completed"}</span>
+                    </p>
                   </div>
                 </div>
 
-                {/* STEPPER (hide for Cancelled) */}
+                {/* TIMELINE STEPPER */}
                 {trackingOrder.status !== "Cancelled" && (
-                  <div className="tracking-stepper">
-                    {[
-                      { status: "Pending", label: "Order Placed", icon: <FiClock /> },
-                      { status: "Shipped", label: "Shipped", icon: <FiTruck /> },
-                      { status: "Delivered", label: "Delivered", icon: <FiCheckCircle /> },
-                    ].map((step) => {
-                      const flow = ["Pending", "Shipped", "Delivered"];
-                      const currentIndex = flow.indexOf(trackingOrder.status);
-                      const stepIndex = flow.indexOf(step.status);
-                      const state =
-                        stepIndex <= currentIndex ? "completed" : "pending";
+                  <div className="tracking-stepper-box">
+                    <h4>Shipment Progress</h4>
+                    <div className="tracking-stepper">
+                      {[
+                        { status: "Pending", label: "Order Placed", desc: "Received and confirmed" },
+                        { status: "Shipped", label: "Shipped", desc: "Package handed to courier" },
+                        { status: "Delivered", label: "Delivered", desc: "Package delivered to recipient" },
+                      ].map((step, stepIndex) => {
+                        const getStepLevel = (status) => {
+                          if (status === "Pending" || status === "Paid") return 0;
+                          if (status === "Shipped") return 1;
+                          if (status === "Delivered") return 2;
+                          return 0;
+                        };
+                        const currentLevel = getStepLevel(trackingOrder.status);
+                        const isCompleted = stepIndex <= currentLevel;
 
+                        return (
+                          <div
+                            className={`stepper-item ${isCompleted ? "completed" : "pending"}`}
+                            key={step.status}
+                          >
+                            <div className="stepper-dot">
+                              {isCompleted ? <FiCheckCircle /> : <FiClock />}
+                            </div>
+                            <div className="stepper-content">
+                              <h4>{step.label}</h4>
+                              <p>{step.desc}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ITEMIZED PRODUCTS BREAKDOWN */}
+                <div className="modal-items-breakdown">
+                  <h4>Ordered Items</h4>
+                  <div className="modal-items-list">
+                    {trackingOrder.items.map((item, idx) => {
+                      const qty = getItemQty(item);
                       return (
-                        <div
-                          className={`stepper-item ${state}`}
-                          key={step.status}
-                        >
-                          <div className="stepper-dot">
-                            {state === "completed" ? (
-                              <FiCheckCircle />
-                            ) : (
-                              step.icon
-                            )}
+                        <div className="modal-item-row" key={idx}>
+                          <img src={getImageUrl(item.image)} alt={item.name} />
+                          <div className="modal-item-info">
+                            <h5>{item.name}</h5>
+                            <p>Size UK {item.size} • Qty {qty}</p>
                           </div>
-                          <div className="stepper-content">
-                            <h4>{step.label}</h4>
-                          </div>
+                          <span className="modal-item-price">
+                            {formatPrice((item.price || 0) * qty)}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
-                )}
+                </div>
 
-                {/* TOTAL */}
-                <div className="modal-footer">
-                  <div className="total-display">
+                {/* COST SUMMARY FOOTER */}
+                <div className="modal-footer-summary">
+                  <div className="summary-row">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(calculateOrderTotal(trackingOrder.items, trackingOrder.totalAmount))}</span>
+                  </div>
+                  <div className="summary-row">
+                    <span>Shipping</span>
+                    <span className="free-badge">FREE</span>
+                  </div>
+                  <div className="summary-row total-row">
                     <span>Total Amount Paid</span>
-                    <strong>
-                      {formatPrice(
-                        calculateOrderTotal(trackingOrder.items)
-                      )}
-                    </strong>
+                    <strong>{formatPrice(calculateOrderTotal(trackingOrder.items, trackingOrder.totalAmount))}</strong>
                   </div>
                 </div>
               </div>

@@ -38,8 +38,8 @@ export const createUser = async (userData) => {
 
     // Generate token
     const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || 'your_secret_key',
+      { userId: user._id, id: user._id, role: user.role },
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -77,8 +77,8 @@ export const authenticateUser = async (email, password) => {
 
     // Generate token
     const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || 'your_secret_key',
+      { userId: user._id, id: user._id, role: user.role },
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 

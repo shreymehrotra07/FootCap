@@ -94,7 +94,7 @@ function AdminSettings() {
 
   if (loading) {
     return (
-      <div className="admin-content">
+      <div className="admin-settings">
         <div className="admin-page-header">
           <h1>Admin Settings</h1>
         </div>
@@ -107,7 +107,7 @@ function AdminSettings() {
   }
 
   return (
-    <div className="admin-content">
+    <div className="admin-settings">
       <div className="admin-page-header">
         <h1>Admin Settings</h1>
       </div>

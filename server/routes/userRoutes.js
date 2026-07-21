@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getProfile, updateProfile, changePasswordRoute, getAllUsersList } from '../controllers/userController.js';
+import { register, login, getProfile, updateProfile, forgotPassword, resetPassword, getAllUsersList } from '../controllers/userController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -10,8 +10,9 @@ router.post('/register', register);
 // Login
 router.post('/login', login);
 
-// Simple password change by email (no token, for demo use)
-router.post('/change-password', changePasswordRoute);
+// Password recovery routes
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // Get user profile - requires authentication
 router.get('/profile', authenticateToken, getProfile);

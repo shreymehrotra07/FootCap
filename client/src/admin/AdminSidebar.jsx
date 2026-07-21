@@ -15,7 +15,7 @@ function AdminSidebar() {
     <aside className="admin-sidebar">
       <div className="admin-brand">
         <h2>Foot<span>Cap</span></h2>
-        <p>Admin Panel</p>
+        <p>Admin Workspace</p>
       </div>
 
       <nav className="admin-nav">

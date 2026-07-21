@@ -2,15 +2,19 @@ import React, { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useOrder } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
-import { FiMapPin, FiPhone, FiUser, FiCreditCard, FiShield, FiTruck, FiArrowLeft, FiArrowRight } from "react-icons/fi";
+import { FiMapPin, FiPhone, FiUser, FiCreditCard, FiShield, FiTruck, FiArrowRight } from "react-icons/fi";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { isAuthenticated } from "../utils/auth";
+import { paymentAPI } from "../utils/api";
 import "./Checkout.css";
-import RazorpayPayment from '../components/RazorpayPayment';
 
 // Helper function to get image URL
 function getImageUrl(imagePath) {
+  if (!imagePath) return '';
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
   const filename = imagePath.split('/').pop();
   return new URL(`../assets/images/${filename}`, import.meta.url).href;
 }
@@ -37,6 +41,7 @@ function Checkout() {
   const { cartItems, totalAmount, clearCart } = useCart();
   const { addOrder } = useOrder();
 
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -50,6 +55,20 @@ function Checkout() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const placeOrder = async (e) => {
     e.preventDefault();
 
@@ -60,7 +79,7 @@ function Checkout() {
     }
 
     if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
-      alert("Please fill all details!");
+      alert("Please fill all delivery details!");
       return;
     }
 
@@ -69,26 +88,102 @@ function Checkout() {
       return;
     }
 
-    // If payment method is Razorpay
+    const orderData = {
+      items: cartItems,
+      totalAmount: totalAmount,
+      deliveryDetails: {
+        name: form.name,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        pincode: form.pincode,
+      },
+      paymentMethod: form.payment,
+    };
+
+    // Case 1: Razorpay Payment
     if (form.payment === 'razorpay') {
-      // The RazorpayPayment component will handle this
+      try {
+        setLoading(true);
+
+        const isLoaded = await loadRazorpay();
+        if (!isLoaded) {
+          alert('Failed to load payment gateway. Please check your internet connection.');
+          setLoading(false);
+          return;
+        }
+
+        // Create order on backend
+        const orderResponse = await paymentAPI.createOrder({
+          amount: totalAmount,
+          currency: 'INR',
+          receipt: `receipt_${Date.now()}`
+        });
+
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: orderResponse.amount,
+          currency: orderResponse.currency,
+          name: 'FootCap',
+          description: 'Premium Footwear Purchase',
+          order_id: orderResponse.orderId,
+          handler: async function (response) {
+            try {
+              const verificationResponse = await paymentAPI.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+
+              if (verificationResponse.success) {
+                const orderId = await addOrder({
+                  ...orderData,
+                  paymentMethod: 'razorpay',
+                  paymentId: response.razorpay_payment_id,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpaySignature: response.razorpay_signature
+                });
+
+                await clearCart();
+                alert(`✅ Payment Successful!\nPayment ID: ${response.razorpay_payment_id}\nOrder ID: ${orderId}`);
+                navigate('/orders');
+              }
+            } catch (error) {
+              console.error('Payment verification error:', error);
+              alert('Payment verification failed. Please contact support.');
+            } finally {
+              setLoading(false);
+            }
+          },
+          prefill: {
+            name: form.name,
+            contact: form.phone
+          },
+          theme: {
+            color: '#FF2A5F'
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false);
+            }
+          }
+        };
+
+        const razorpayInstance = new window.Razorpay(options);
+        razorpayInstance.open();
+
+      } catch (error) {
+        console.error('Payment initiation error:', error);
+        alert('Failed to initiate payment. Please try again.');
+        setLoading(false);
+      }
       return;
     }
 
-    // For COD, place order directly
+    // Case 2: Cash on Delivery
     try {
-      const orderId = await addOrder({
-        items: cartItems,
-        totalAmount: totalAmount,
-        deliveryDetails: {
-          name: form.name,
-          phone: form.phone,
-          address: form.address,
-          city: form.city,
-          pincode: form.pincode,
-        },
-        paymentMethod: form.payment,
-      });
+      setLoading(true);
+      const orderId = await addOrder(orderData);
 
       await clearCart();
       alert(`✅ Order Placed Successfully!\nOrder ID: ${orderId}`);
@@ -96,6 +191,8 @@ function Checkout() {
     } catch (error) {
       console.error('Error placing order:', error);
       alert('Failed to place order. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -219,43 +316,21 @@ function Checkout() {
                 </div>
               </div>
 
-              {/* ✅ RAZORPAY BUTTON */}
-              {form.payment === 'razorpay' && (
-                <div style={{ marginTop: '20px' }}>
-                  <RazorpayPayment
-                    amount={totalAmount}
-                    orderData={{
-                      items: cartItems,
-                      totalAmount: totalAmount,
-                      deliveryDetails: {
-                        name: form.name,
-                        phone: form.phone,
-                        address: form.address,
-                        city: form.city,
-                        pincode: form.pincode,
-                      },
-                      paymentMethod: 'razorpay',
-                    }}
-                    onSuccess={async (orderId, paymentId) => {
-                      console.log('Payment successful:', { orderId, paymentId });
-                    }}
-                    onError={(error) => {
-                      console.error('Payment failed:', error);
-                      alert('Payment failed. Please try again.');
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* FOOTER */}
+              {/* FOOTER - SINGLE ACTION BUTTON */}
               <div className="checkout-footer-actions">
                 <div className="security-trust">
                   <FiShield />
                   <span>256-bit SSL Secure Payment</span>
                 </div>
 
-                <button type="submit" className="place-order-btn">
-                  Complete Purchase <FiArrowRight />
+                <button type="submit" disabled={loading} className="place-order-btn">
+                  {loading ? (
+                    "Processing..."
+                  ) : (
+                    <>
+                      {form.payment === 'razorpay' ? "Pay & Place Order" : "Complete Purchase"} <FiArrowRight />
+                    </>
+                  )}
                 </button>
               </div>
             </form>

@@ -181,15 +181,19 @@ function AdminAddProduct() {
   };
 
   return (
-    <div className="admin-content">
-      <div className="admin-page-header">
+    <div className="admin-add-product">
+      <div className="admin-page-header form-header">
+        <div className="page-title">
+          <h1>Add New Product</h1>
+          <p>Create a new footwear product entry in your catalog</p>
+        </div>
         <button 
-          className="btn btn-back"
+          type="button"
+          className="btn btn-outline btn-back"
           onClick={() => navigate("/admin/products")}
         >
           <FiArrowLeft /> Back to Products
         </button>
-        <h1>Add New Product</h1>
       </div>
 
       {error && (
@@ -204,7 +208,8 @@ function AdminAddProduct() {
         </div>
       )}
 
-      <form className="admin-form" onSubmit={handleSubmit}>
+      <div className="admin-glass-form-card">
+        <form className="admin-form" onSubmit={handleSubmit}>
         <div className="form-grid">
           {/* Left Column */}
           <div className="form-column">
@@ -451,7 +456,8 @@ function AdminAddProduct() {
         </div>
       </form>
     </div>
-  );
+  </div>
+);
 }
 
 export default AdminAddProduct;

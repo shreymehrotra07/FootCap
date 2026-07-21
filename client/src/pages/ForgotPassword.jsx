@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiMail, FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import Toast from "../components/Toast";
+import { userAPI } from "../utils/api";
 import "./Auth.css";
 
 function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "error" });
 
   const showToast = (message, type = "error") => {
@@ -14,7 +16,7 @@ function ForgotPassword() {
     setTimeout(() => setToast({ show: false, message: "", type: "error" }), 2500);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email) {
@@ -22,11 +24,19 @@ function ForgotPassword() {
       return;
     }
 
-    // Simple flow: go to Reset Password page with this email
-    showToast("Email verified. Redirecting...", "success");
-    setTimeout(() => {
-      navigate("/reset-password", { state: { email } });
-    }, 1000);
+    try {
+      setLoading(true);
+      const res = await userAPI.forgotPassword(email);
+      showToast(res.message || "Password reset link sent to your email.", "success");
+      setEmail("");
+    } catch (error) {
+      console.warn("Forgot password request handled:", error.message);
+      // Generic response to avoid email enumeration
+      showToast("If that email exists, a password reset link has been sent.", "success");
+      setEmail("");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,8 +61,8 @@ function ForgotPassword() {
             <FiMail className="input-icon" />
           </div>
 
-          <button type="submit" className="auth-btn">
-            Continue <FiArrowRight />
+          <button type="submit" disabled={loading} className="auth-btn">
+            {loading ? <span className="auth-loader"></span> : <>Continue <FiArrowRight /></>}
           </button>
         </form>
 

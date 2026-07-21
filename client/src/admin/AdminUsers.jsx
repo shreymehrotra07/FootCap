@@ -134,7 +134,7 @@ function AdminUsers() {
 
   /* ================= RENDER ================= */
   return (
-    <div className="admin-content">
+    <div className="admin-users">
       <div className="admin-page-header">
         <h1>User Management</h1>
       </div>

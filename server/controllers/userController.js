@@ -1,4 +1,7 @@
 import { body, validationResult } from 'express-validator';
+import crypto from 'crypto';
+import User from '../models/User.js';
+import sendEmail from '../utils/sendEmail.js';
 import {
   createUser,
   authenticateUser,
@@ -31,7 +34,7 @@ export const register = [
       const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       };
       
@@ -70,7 +73,7 @@ export const login = [
       const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       };
       
@@ -90,43 +93,9 @@ export const login = [
 // Get user profile
 export const getProfile = async (req, res) => {
   try {
-    console.log('getProfile called');
-    console.log('Authorization header:', req.headers.authorization);
-    console.log('Cookies:', req.cookies);
-    
-    // Use JWT authentication - read from cookie first, then header as fallback
-    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-    
-    console.log('Token extracted:', token);
-    
-    if (!token) {
-      console.log('No token provided');
-      return res.status(401).json({ message: 'Access denied. No token provided.' });
-    }
-
-    // Verify token
-    const jwt = (await import('jsonwebtoken')).default;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
-    console.log('Token decoded:', decoded);
-    
-    // Use decoded.userId as the token was generated with userId
-    const user = await getUserById(decoded.userId);
-    
-    console.log('User found:', user);
-    
-    res.json(user);
+    // req.user is already populated by authenticateToken middleware
+    res.json(req.user);
   } catch (error) {
-    console.error('getProfile error:', error);
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(403).json({ message: 'Invalid token.' });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Token expired.' });
-    }
-    
     res.status(500).json({ message: error.message });
   }
 };
@@ -134,39 +103,84 @@ export const getProfile = async (req, res) => {
 // Update user profile
 export const updateProfile = async (req, res) => {
   try {
-    // Use JWT authentication - read from cookie first, then header as fallback
-    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    // req.user is already populated by authenticateToken middleware
     
-    if (!token) {
-      return res.status(401).json({ message: 'Access denied. No token provided.' });
+    // Security check: If trying to update email, require current password verification
+    if (req.body.email && req.body.email.toLowerCase() !== req.user.email.toLowerCase()) {
+      const { currentPassword } = req.body;
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to change email address.' });
+      }
+      
+      const isMatch = await req.user.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password verification failed. Email update rejected.' });
+      }
     }
 
-    // Verify token
-    const jwt = (await import('jsonwebtoken')).default;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
-    const result = await updateUserProfile(decoded.id, req.body);
+    const result = await updateUserProfile(req.user._id, req.body);
     res.json(result);
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(403).json({ message: 'Invalid token.' });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Token expired.' });
-    }
-    
     res.status(500).json({ message: error.message });
   }
 };
 
-// Change password
-export const changePasswordRoute = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+// Forgot Password - send email token
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+
+    // Mitigate email enumeration by returning generic success even if user not found
+    if (!user) {
+      console.warn(`Forgot password requested for unregistered email: ${email}`);
+      return res.status(200).json({
+        message: 'If that email exists, a password reset link has been sent.'
+      });
+    }
+
+    // Generate token
+    const resetToken = user.getResetPasswordToken();
+    await user.save();
+
+    // Construct link
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+
+    const message = `You are receiving this email because you (or someone else) requested a password reset for your account.\n\nPlease click the link below or paste it into your browser to reset your password within 15 minutes:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email.`;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'FootCap Account Password Reset',
+        message
+      });
+
+      console.log(`Password reset link successfully sent to: ${user.email}`);
+
+      res.status(200).json({
+        message: 'Password reset link sent to your email.'
+      });
+    } catch (mailError) {
+      console.error('Mail transmission failed. Cleared token fields.', mailError);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+
+      return res.status(500).json({
+        message: 'Email could not be sent. Please try again later.'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Reset Password - verify token and update password
+export const resetPassword = [
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   async (req, res) => {
     try {
-      // Check for validation errors
+      // Validate password checks
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
@@ -175,8 +189,37 @@ export const changePasswordRoute = [
         });
       }
 
-      const result = await changePassword(req.body.email, req.body.newPassword);
-      res.json(result);
+      // Hash token parameter
+      const resetPasswordToken = crypto
+        .createHash('sha256')
+        .update(req.params.token)
+        .digest('hex');
+
+      const user = await User.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now() }
+      });
+
+      if (!user) {
+        console.error('Password reset failure: Token is invalid or has expired');
+        return res.status(400).json({
+          message: 'Invalid or expired password reset token'
+        });
+      }
+
+      // Set new password (pre-save hook will hash it)
+      user.password = req.body.password;
+      
+      // Invalidate token
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+
+      console.log(`Password successfully reset for account ID: ${user._id}`);
+
+      res.status(200).json({
+        message: 'Password reset successful. Please login with your new password.'
+      });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

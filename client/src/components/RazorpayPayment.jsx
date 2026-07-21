@@ -61,7 +61,8 @@ function RazorpayPayment({ amount, orderData, onSuccess, onError }) {
                 ...orderData,
                 paymentMethod: 'razorpay',
                 paymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature
               });
 
               // Step 5: Clear cart

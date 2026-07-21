@@ -1,19 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { productAPI } from "../utils/api";
-import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight, FiHeart, FiShoppingBag } from "react-icons/fi";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
+import CustomSelect from "../components/CustomSelect";
 import "./MenProducts.css"; // Reuse the same premium styles
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest Arrival" },
+  { value: "popularity", label: "Popularity" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "name", label: "Name (A-Z)" }
+];
 
 // Helper function to get image URL
 function getImageUrl(imagePath) {
   if (!imagePath) return "";
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
   const filename = imagePath.split("/").pop();
   return new URL(`../assets/images/${filename}`, import.meta.url).href;
 }
 
 function NewArrivalsPage() {
+  const { addToCart } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
+  const [toast, setToast] = useState(false);
+
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const initialSearch = queryParams.get("search") || "";
@@ -41,20 +59,6 @@ function NewArrivalsPage() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        console.log("Fetching products with filters:", { 
-          currentPage, 
-          productsPerPage, 
-          activeBrand, 
-          activeCategory, 
-          sortBy,
-          activeMinPrice,
-          activeMaxPrice,
-          selectedSize,
-          selectedColor,
-          activeSearchQuery
-        });
-        
-        // Fetch paginated products with all filters, but NO gender filter for New Arrivals
         const data = await productAPI.getPaginated(currentPage, productsPerPage, { 
           brand: activeBrand,
           category: activeCategory === "All Footwear" ? "" : activeCategory,
@@ -66,15 +70,13 @@ function NewArrivalsPage() {
           search: activeSearchQuery
         });
         
-        console.log("Products API response:", data);
-        
-        setProducts(data.products);
+        setProducts(data.products || []);
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalProducts(data.pagination.totalProducts);
         } else {
           setTotalPages(1);
-          setTotalProducts(data.products.length);
+          setTotalProducts(data.products?.length || 0);
         }
         setError(null);
       } catch (err) {
@@ -90,6 +92,18 @@ function NewArrivalsPage() {
 
     fetchProducts();
   }, [currentPage, activeBrand, activeCategory, sortBy, activeMinPrice, activeMaxPrice, selectedSize, selectedColor, activeSearchQuery]);
+
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await addToCart(product, 9);
+      setToast(true);
+      setTimeout(() => setToast(false), 2500);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+    }
+  };
 
   const handleBrandChange = (brand) => {
     setActiveBrand(brand);
@@ -229,18 +243,6 @@ function NewArrivalsPage() {
         </aside>
 
         <section className="plp-content">
-          <div className="plp-search-container">
-            <input 
-              type="text" 
-              placeholder="Search latest arrivals..." 
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              className="plp-search-input"
-            />
-            <FiSearch className="search-icon" />
-          </div>
-
           <div className="plp-header">
             <div className="header-text">
               <h2>New Arrivals</h2>
@@ -249,51 +251,75 @@ function NewArrivalsPage() {
 
             <div className="sort-box">
               <span>Sort by:</span>
-              <select value={sortBy} onChange={(e) => {
-                setSortBy(e.target.value);
-                setCurrentPage(1);
-              }}>
-                <option value="newest">Newest Arrival</option>
-                <option value="popularity">Popularity</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="name">Name (A-Z)</option>
-              </select>
+              <CustomSelect
+                options={SORT_OPTIONS}
+                value={sortBy}
+                onChange={(val) => {
+                  setSortBy(val);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
 
           {/* GRID */}
           <div className="plp-grid">
             {loading ? (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "4rem" }}>
-                <div className="loader">Loading latest drops...</div>
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "4rem", color: "#A0A0AB" }}>
+                Loading latest drops...
               </div>
             ) : products.length === 0 ? (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "2rem" }}>
-                No products found.
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "4rem", color: "#A0A0AB" }}>
+                No products found matching your filters.
               </div>
             ) : (
               products.map((p, index) => {
                 const productId = p._id || p.id;
+                const brandText = p.brand || p.category || 'Premium';
+                const priceText = p.priceDisplay || `₹${p.price?.toLocaleString('en-IN')}`;
+
                 return (
-                  <Link
-                    to={`/product/${productId}`}
-                    key={productId}
-                    className="plp-card"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    {p.badge && <span className="badge">{p.badge}</span>}
+                  <div className="plp-card-wrap" key={productId}>
+                    <Link
+                      to={`/product/${productId}`}
+                      className="plp-card"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      {p.badge && <span className="badge">{p.badge}</span>}
 
-                    <div className="img-box">
-                      <img src={getImageUrl(p.image)} alt={p.name} />
-                    </div>
+                      <div className="img-box">
+                        <img src={getImageUrl(p.image)} alt={p.name} />
+                        <div className="plp-card-overlay" />
+                        <button
+                          className="plp-quick-add"
+                          onClick={(e) => handleAddToCart(e, p)}
+                        >
+                          <FiShoppingBag /> Add to Cart
+                        </button>
+                      </div>
 
-                    <h5>{p.name}</h5>
-                    <p>
-                      {p.brand} • {p.gender} • {p.category}
-                    </p>
-                    <span className="price">{p.priceDisplay}</span>
-                  </Link>
+                      <div className="plp-card-info">
+                        <p className="plp-card-brand">{brandText}</p>
+                        <h5>{p.name}</h5>
+                        <p>
+                          {p.gender ? `${p.gender} • ` : ''}{p.category}
+                        </p>
+                        <span className="price">{priceText}</span>
+                      </div>
+                    </Link>
+
+                    <button
+                      className={`plp-wish-btn${isWishlisted(productId) ? ' active' : ''}`}
+                      onClick={(e) => { 
+                        e.preventDefault(); 
+                        e.stopPropagation(); 
+                        toggleWishlist(p); 
+                      }}
+                      title="Add to wishlist"
+                    >
+                      <FiHeart />
+                    </button>
+                  </div>
                 );
               })
             )}
@@ -331,6 +357,8 @@ function NewArrivalsPage() {
           )}
         </section>
       </div>
+
+      <div className={`plp-toast${toast ? ' visible' : ''}`}>✓ Added to Cart</div>
       <Footer />
     </>
   );

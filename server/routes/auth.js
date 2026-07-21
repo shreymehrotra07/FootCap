@@ -61,7 +61,7 @@ router.post("/google", async (req, res) => {
 
     // 6️⃣ Generate JWT
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { userId: user._id, id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -72,7 +72,7 @@ router.post("/google", async (req, res) => {
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     };
     
@@ -155,7 +155,7 @@ router.post("/google-login", async (req, res) => {
 
     // 6️⃣ Generate JWT
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { userId: user._id, id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -166,7 +166,7 @@ router.post("/google-login", async (req, res) => {
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     };
     

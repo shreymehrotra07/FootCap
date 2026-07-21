@@ -1,19 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { productAPI } from "../utils/api";
-import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight, FiHeart, FiShoppingBag } from "react-icons/fi";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
+import CustomSelect from "../components/CustomSelect";
 import "./MenProducts.css";
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest Arrival" },
+  { value: "popularity", label: "Popularity" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "name", label: "Name (A-Z)" }
+];
 
 // Helper function to get image URL
 function getImageUrl(imagePath) {
   if (!imagePath) return "";
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
   const filename = imagePath.split("/").pop();
   return new URL(`../assets/images/${filename}`, import.meta.url).href;
 }
 
 function Products() {
+  const { addToCart } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
+  const [toast, setToast] = useState(false);
+
   const [activeBrand, setActiveBrand] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Footwear");
   const [sortBy, setSortBy] = useState("newest");
@@ -31,13 +49,12 @@ function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
-  const productsPerPage = 20; // Show 20 products per page
+  const productsPerPage = 20;
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Fetch paginated products with all filters
         const data = await productAPI.getPaginated(currentPage, productsPerPage, { 
           brand: activeBrand,
           category: activeCategory === "All Footwear" ? "" : activeCategory,
@@ -50,13 +67,13 @@ function Products() {
           search: activeSearchQuery
         });
         
-        setProducts(data.products);
+        setProducts(data.products || []);
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalProducts(data.pagination.totalProducts);
         } else {
           setTotalPages(1);
-          setTotalProducts(data.products.length);
+          setTotalProducts(data.products?.length || 0);
         }
         setError(null);
       } catch (err) {
@@ -73,7 +90,18 @@ function Products() {
     fetchProducts();
   }, [currentPage, activeBrand, activeCategory, sortBy, activeMinPrice, activeMaxPrice, selectedSize, selectedColor, activeSearchQuery]);
 
-  // Reset to page 1 when brand changes
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await addToCart(product, 9);
+      setToast(true);
+      setTimeout(() => setToast(false), 2500);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+    }
+  };
+
   const handleBrandChange = (brand) => {
     setActiveBrand(brand);
     setCurrentPage(1);
@@ -108,7 +136,6 @@ function Products() {
     }
   };
 
-  // Pagination handlers
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -116,22 +143,18 @@ function Products() {
     }
   };
 
-  // Generate page numbers to display
   const getPageNumbers = () => {
     const pages = [];
-    const maxVisible = 5; // Show max 5 page numbers
+    const maxVisible = 5;
     
     if (totalPages <= maxVisible) {
-      // Show all pages if total is less than max
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Show pages around current page
       let start = Math.max(1, currentPage - 2);
       let end = Math.min(totalPages, start + maxVisible - 1);
       
-      // Adjust start if we're near the end
       if (end - start < maxVisible - 1) {
         start = Math.max(1, end - maxVisible + 1);
       }
@@ -161,7 +184,7 @@ function Products() {
   if (error) {
     return (
       <div className="plp">
-        <div style={{ textAlign: "center", padding: "2rem", color: "red" }}>
+        <div style={{ textAlign: "center", padding: "4rem", color: "#FF2A5F" }}>
           {error}
         </div>
       </div>
@@ -251,18 +274,6 @@ function Products() {
         </aside>
 
         <section className="plp-content">
-          <div className="plp-search-container">
-            <input 
-              type="text" 
-              placeholder="Search women's collection..." 
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              className="plp-search-input"
-            />
-            <FiSearch className="search-icon" />
-          </div>
-
           <div className="plp-header">
             <div className="header-text">
               <h2>Women's Footwear</h2>
@@ -271,16 +282,14 @@ function Products() {
 
             <div className="sort-box">
               <span>Sort by:</span>
-              <select value={sortBy} onChange={(e) => {
-                setSortBy(e.target.value);
-                setCurrentPage(1);
-              }}>
-                <option value="newest">Newest Arrival</option>
-                <option value="popularity">Popularity</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="name">Name (A-Z)</option>
-              </select>
+              <CustomSelect
+                options={SORT_OPTIONS}
+                value={sortBy}
+                onChange={(val) => {
+                  setSortBy(val);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
 
@@ -292,32 +301,60 @@ function Products() {
                   gridColumn: "1 / -1",
                   textAlign: "center",
                   padding: "4rem",
+                  color: "#A0A0AB",
+                  fontFamily: "'Outfit', sans-serif"
                 }}
               >
-                {loading ? "" : ``}
+                {loading ? "Loading items..." : "No items found matching your filters."}
               </div>
             ) : (
               products.map((p, index) => {
                 const productId = p._id || p.id;
+                const brandText = p.brand || p.category || 'Premium';
+                const priceText = p.priceDisplay || `₹${p.price?.toLocaleString('en-IN')}`;
+
                 return (
-                  <Link
-                    to={`/product/${productId}`}
-                    key={productId}
-                    className="plp-card"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    {p.badge && <span className="badge">{p.badge}</span>}
+                  <div className="plp-card-wrap" key={productId}>
+                    <Link
+                      to={`/product/${productId}`}
+                      className="plp-card"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      {p.badge && <span className="badge">{p.badge}</span>}
 
-                    <div className="img-box">
-                      <img src={getImageUrl(p.image)} alt={p.name} />
-                    </div>
+                      <div className="img-box">
+                        <img src={getImageUrl(p.image)} alt={p.name} />
+                        <div className="plp-card-overlay" />
+                        <button
+                          className="plp-quick-add"
+                          onClick={(e) => handleAddToCart(e, p)}
+                        >
+                          <FiShoppingBag /> Add to Cart
+                        </button>
+                      </div>
 
-                    <h5>{p.name}</h5>
-                    <p>
-                      {p.brand} • {p.gender} • {p.category}
-                    </p>
-                    <span className="price">{p.priceDisplay}</span>
-                  </Link>
+                      <div className="plp-card-info">
+                        <p className="plp-card-brand">{brandText}</p>
+                        <h5>{p.name}</h5>
+                        <p>
+                          {p.gender ? `${p.gender} • ` : ''}{p.category}
+                        </p>
+                        <span className="price">{priceText}</span>
+                      </div>
+                    </Link>
+
+                    <button
+                      className={`plp-wish-btn${isWishlisted(productId) ? ' active' : ''}`}
+                      onClick={(e) => { 
+                        e.preventDefault(); 
+                        e.stopPropagation(); 
+                        toggleWishlist(p); 
+                      }}
+                      title="Add to wishlist"
+                    >
+                      <FiHeart />
+                    </button>
+                  </div>
                 );
               })
             )}
@@ -355,6 +392,8 @@ function Products() {
           )}
         </section>
       </div>
+
+      <div className={`plp-toast${toast ? ' visible' : ''}`}>✓ Added to Cart</div>
       <Footer />
     </>
   );

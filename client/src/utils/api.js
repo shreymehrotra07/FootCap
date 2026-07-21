@@ -158,9 +158,17 @@ export const userAPI = {
     method: 'POST',
     body: JSON.stringify(credentials),
   }),
-  changePassword: (email, newPassword) => userApiCall('/users/change-password', {
+  googleAuth: (googleData) => publicApiCall('/auth/google', {
     method: 'POST',
-    body: JSON.stringify({ email, newPassword }),
+    body: JSON.stringify(googleData),
+  }),
+  forgotPassword: (email) => userApiCall('/users/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  resetPassword: (token, password) => userApiCall(`/users/reset-password/${token}`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
   }),
   getProfile: () => {
     console.log('Making profile API call');

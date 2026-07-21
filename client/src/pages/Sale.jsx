@@ -11,6 +11,9 @@ import "./Sale.css";
 // Helper function to get image URL
 function getImageUrl(imagePath) {
   if (!imagePath) return "";
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
   const filename = imagePath.split("/").pop();
   return new URL(`../assets/images/${filename}`, import.meta.url).href;
 }

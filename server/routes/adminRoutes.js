@@ -8,28 +8,36 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { storage as cloudinaryStorage } from '../config/cloudinary.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure multer for image upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, '../../client/src/assets/images');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+// Configure multer storage with local fallback for development
+let activeStorage;
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  console.log('☁️  Using Cloudinary for product image storage');
+  activeStorage = cloudinaryStorage;
+} else {
+  console.warn('⚠️  Cloudinary env variables not found. Falling back to local disk storage.');
+  activeStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      const uploadPath = path.join(__dirname, '../../client/src/assets/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'product-' + uniqueSuffix + path.extname(file.originalname));
     }
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'product-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+  });
+}
 
 const upload = multer({
-  storage: storage,
+  storage: activeStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
     const filetypes = /jpeg|jpg|png|webp/;
@@ -193,12 +201,14 @@ router.post('/upload', adminAuth, upload.single('image'), (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
     
-    // Return the image path
-    const imagePath = `/src/assets/images/${req.file.filename}`;
+    // Cloudinary stores URL in req.file.path. Local storage stores filename in req.file.filename.
+    const isCloudUrl = req.file.path && req.file.path.startsWith('http');
+    const imagePath = isCloudUrl ? req.file.path : `/src/assets/images/${req.file.filename}`;
+    
     res.json({ 
-      message: 'Image uploaded successfully', 
+      message: isCloudUrl ? 'Image uploaded successfully to Cloudinary' : 'Image uploaded successfully to local storage', 
       imagePath,
-      filename: req.file.filename
+      filename: req.file.filename || req.file.public_id
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -1,4 +1,5 @@
-const API_URL = `${import.meta.env.VITE_API_URL}/admin`; // Uses the same VITE_API_URL from .env
+const BASE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = `${BASE_API_URL}/admin`;
 
 // Import admin auth utility
 import adminAuth from './adminAuth';

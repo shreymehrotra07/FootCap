@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "./NewArrivals.css";
 import { productAPI } from "../utils/api";
 import { useCart } from "../context/CartContext";
-import { FiHeart } from "react-icons/fi";
+import { FiHeart, FiShoppingBag } from "react-icons/fi";
 import { useWishlist } from "../context/WishlistContext";
 
 function getImageUrl(imagePath) {
@@ -28,8 +28,6 @@ function NewArrivals() {
         console.log('Fetching products from API...');
         const data = await productAPI.getAll();
         console.log('Products API response:', data);
-        console.log('Products array:', data.products);
-        console.log('Products count:', data.products?.length);
         setProducts(data.products || []);
         setError(null);
       } catch (err) {
@@ -66,10 +64,11 @@ function NewArrivals() {
             </div>
           </div>
           <div style={{
-            textAlign: 'center', padding: '5rem',
-            color: 'var(--smoke)',
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '12px',
+            textAlign: 'center', 
+            padding: '5rem',
+            color: '#A0A0AB',
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: '13px',
             letterSpacing: '3px',
             textTransform: 'uppercase'
           }}>
@@ -84,7 +83,7 @@ function NewArrivals() {
     return (
       <section className="fc-arrivals">
         <div className="fc-arrivals-container">
-          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--crimson)' }}>{error}</div>
+          <div style={{ textAlign: 'center', padding: '4rem', color: '#FF2A5F' }}>{error}</div>
         </div>
       </section>
     );
@@ -109,28 +108,39 @@ function NewArrivals() {
         <div className="fc-product-grid">
           {products.slice(0, 8).map((item, index) => {
             const productId = item._id || item.id;
+            const badgeText = item.badge || (index < 3 ? 'New' : null);
+            const brandText = item.brand || item.category || 'Premium';
+            const priceText = item.priceDisplay || `₹${item.price?.toLocaleString('en-IN')}`;
+
             return (
               <div className="fc-card-wrap" key={productId}>
                 <Link to={`/product/${productId}`} className="fc-product-card">
                   <div className="fc-card-img">
                     <img src={getImageUrl(item.image)} alt={item.name} />
                     <div className="fc-card-overlay" />
-                    {index < 3 && <span className="fc-card-badge">New</span>}
+                    {badgeText && <span className="fc-card-badge">{badgeText}</span>}
                     <button
                       className="fc-quick-add"
                       onClick={(e) => handleAddToCart(e, item)}
                     >
-                      + Add to Cart
+                      <FiShoppingBag /> Add to Cart
                     </button>
                   </div>
                   <div className="fc-card-info">
-                    <p className="fc-card-name">{item.name}</p>
-                    <p className="fc-card-price">{item.priceDisplay}</p>
+                    <p className="fc-card-brand">{brandText}</p>
+                    <h3 className="fc-card-name">{item.name}</h3>
+                    <div className="fc-card-bottom">
+                      <p className="fc-card-price">{priceText}</p>
+                    </div>
                   </div>
                 </Link>
                 <button
                   className={`fc-wish-btn${isWishlisted(productId) ? ' active' : ''}`}
-                  onClick={(e) => { e.preventDefault(); toggleWishlist(item); }}
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    e.stopPropagation(); 
+                    toggleWishlist(item); 
+                  }}
                   title="Add to wishlist"
                 >
                   <FiHeart />

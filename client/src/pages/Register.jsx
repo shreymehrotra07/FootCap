@@ -4,7 +4,6 @@ import "./Auth.css";
 import { userAPI } from "../utils/api";
 import Toast from "../components/Toast";
 import { FiEye, FiEyeOff, FiUser, FiMail, FiLock, FiArrowRight } from "react-icons/fi";
-// 🔥 Firebase imports
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 
@@ -59,41 +58,25 @@ function Register() {
     return errors;
   };
 
-  // 🔥 Google Registration with Backend Integration
+  // Google Registration Handler
   const handleGoogleRegister = async () => {
     try {
       setLoading(true);
 
-      // 1️⃣ Firebase Google Auth
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
-      // 2️⃣ Send to backend for JWT token and user creation
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/google`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: firebaseUser.displayName,
-          email: firebaseUser.email,
-          googleId: firebaseUser.uid,
-          photo: firebaseUser.photoURL,
-        }),
+      const data = await userAPI.googleAuth({
+        name: firebaseUser.displayName,
+        email: firebaseUser.email,
+        googleId: firebaseUser.uid,
+        photo: firebaseUser.photoURL,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Google registration failed");
-      }
-
-      // 3️⃣ Store user data (token is in HTTP-only cookie)
       localStorage.setItem("userId", data.user.id);
       localStorage.setItem("userName", data.user.name);
       localStorage.setItem("userEmail", data.user.email);
 
-      // 4️⃣ Success and redirect
       showToast("Registration successful with Google!", "success");
       setTimeout(() => {
         navigate("/");
@@ -101,6 +84,9 @@ function Register() {
 
     } catch (error) {
       console.error("Google Registration Error:", error);
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return;
+      }
       showToast(
         error.response?.data?.message ||
         error.message ||
@@ -125,7 +111,6 @@ function Register() {
       return;
     }
 
-    // Validate password strength
     const passwordErrors = validatePassword(password);
     if (passwordErrors.length > 0) {
       showToast(passwordErrors.join(". "), "error");
@@ -137,8 +122,6 @@ function Register() {
 
       const res = await userAPI.register({ name, email, password });
 
-      // In cookie-based auth, token is stored in HTTP-only cookie
-      // We still store user info in localStorage for UI purposes
       localStorage.setItem("userId", res.user.id);
       localStorage.setItem("userName", res.user.name);
       localStorage.setItem("userEmail", res.user.email);
@@ -160,7 +143,6 @@ function Register() {
   return (
     <div className="auth-wrapper-blue">
       <div className="auth-card-blue">
-        {/* BRAND */}
         <h1 className="auth-brand">
           Foot<span>Cap</span>
         </h1>
@@ -205,45 +187,28 @@ function Register() {
               type="button"
               className="auth-toggle-password"
               onClick={() => setShowPassword((s) => !s)}
-              aria-label="Toggle Password"
+              aria-label="Toggle Password Visibility"
             >
               {showPassword ? <FiEyeOff /> : <FiEye />}
             </button>
           </div>
 
-          {/* Password Requirements */}
+          {/* Password Requirements Panel */}
           {password && (
-            <div className="password-requirements" style={{
-              marginTop: '8px',
-              padding: '12px',
-              backgroundColor: '#f8f9fa',
-              borderRadius: '6px',
-              fontSize: '13px'
-            }}>
-              <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#333' }}>Password Requirements:</p>
-              <ul style={{ margin: 0, paddingLeft: '20px', listStyle: 'none' }}>
-                <li style={{ 
-                  color: password.length >= 6 ? '#22c55e' : '#ef4444',
-                  marginBottom: '4px'
-                }}>
-                  {password.length >= 6 ? '✓' : '✗'} At least 6 characters
+            <div className="password-requirements">
+              <p className="password-requirements-title">Password Requirements:</p>
+              <ul className="password-requirements-list">
+                <li className={`password-requirements-item ${password.length >= 6 ? 'valid' : 'invalid'}`}>
+                  <span>{password.length >= 6 ? '✓' : '✕'}</span> At least 6 characters
                 </li>
-                <li style={{ 
-                  color: /[A-Z]/.test(password) ? '#22c55e' : '#ef4444',
-                  marginBottom: '4px'
-                }}>
-                  {/[A-Z]/.test(password) ? '✓' : '✗'} One uppercase letter
+                <li className={`password-requirements-item ${/[A-Z]/.test(password) ? 'valid' : 'invalid'}`}>
+                  <span>{/[A-Z]/.test(password) ? '✓' : '✕'}</span> One uppercase letter
                 </li>
-                <li style={{ 
-                  color: /[a-z]/.test(password) ? '#22c55e' : '#ef4444',
-                  marginBottom: '4px'
-                }}>
-                  {/[a-z]/.test(password) ? '✓' : '✗'} One lowercase letter
+                <li className={`password-requirements-item ${/[a-z]/.test(password) ? 'valid' : 'invalid'}`}>
+                  <span>{/[a-z]/.test(password) ? '✓' : '✕'}</span> One lowercase letter
                 </li>
-                <li style={{ 
-                  color: /\d/.test(password) ? '#22c55e' : '#ef4444'
-                }}>
-                  {/\d/.test(password) ? '✓' : '✗'} One number
+                <li className={`password-requirements-item ${/\d/.test(password) ? 'valid' : 'invalid'}`}>
+                  <span>{/\d/.test(password) ? '✓' : '✕'}</span> One number
                 </li>
               </ul>
             </div>
@@ -263,7 +228,7 @@ function Register() {
               type="button"
               className="auth-toggle-password"
               onClick={() => setShowConfirmPassword((s) => !s)}
-              aria-label="Toggle Confirm Password"
+              aria-label="Toggle Confirm Password Visibility"
             >
               {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
             </button>
@@ -274,12 +239,10 @@ function Register() {
           </button>
         </form>
 
-        {/* 🔹 OR DIVIDER */}
         <div className="auth-divider">
           <span>OR</span>
         </div>
 
-        {/* 🔥 GOOGLE SIGN IN BUTTON */}
         <button
           type="button"
           onClick={handleGoogleRegister}

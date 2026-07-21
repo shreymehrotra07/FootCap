@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLock, FiArrowRight, FiArrowLeft } from "react-icons/fi";
 import Toast from "../components/Toast";
 import { userAPI } from "../utils/api";
@@ -7,8 +7,7 @@ import "./Auth.css";
 
 function ResetPassword() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const email = location.state?.email || "";
+  const { token } = useParams();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,8 +24,8 @@ function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email) {
-      showToast("Email missing. Please start from Forgot Password.", "error");
+    if (!token) {
+      showToast("Reset token missing. Please use the link sent to your email.", "error");
       return;
     }
     if (!newPassword || !confirmPassword) {
@@ -40,7 +39,7 @@ function ResetPassword() {
 
     try {
       setLoading(true);
-      const res = await userAPI.changePassword(email, newPassword);
+      const res = await userAPI.resetPassword(token, newPassword);
       showToast(res.message || "Password reset successful!", "success");
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {

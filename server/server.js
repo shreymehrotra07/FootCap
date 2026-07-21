@@ -1,6 +1,21 @@
 import dotenv from "dotenv";
 dotenv.config(); // Load environment variables FIRST
 
+// Ensure critical environment variables are set
+if (!process.env.JWT_SECRET) {
+  console.error("❌ CRITICAL ERROR: JWT_SECRET environment variable is missing!");
+  process.exit(1);
+}
+
+// Warn if SMTP settings are missing
+if (process.env.NODE_ENV === 'production') {
+  const requiredSmtpEnv = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'FROM_EMAIL'];
+  const missing = requiredSmtpEnv.filter(env => !process.env[env]);
+  if (missing.length > 0) {
+    console.warn(`⚠️ WARNING: Missing SMTP configurations for production: ${missing.join(', ')}. Email features will be disabled until configured.`);
+  }
+}
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -31,17 +46,27 @@ import {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Enable trust proxy for Render / reverse proxies (required for secure cookies & rate-limiting)
+app.set('trust proxy', 1);
+
 // 🔹 SECURITY MIDDLEWARE
 // Helmet for security headers
 app.use(helmet());
 
-// Rate limiting
-const limiter = rateLimit({
+// Global Rate Limiting (relaxed for product browsing)
+const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // 1000 requests per IP per windowMs
   message: { message: 'Too many requests from this IP, please try again later.' }
 });
-app.use(limiter);
+app.use(globalLimiter);
+
+// Strict Authentication Rate Limiting (20 requests per 15 minutes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { message: 'Too many login or authentication attempts from this IP, please try again later.' }
+});
 
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
@@ -55,11 +80,26 @@ app.use(cookieParser());
 // 🔹 GLOBAL MIDDLEWARE
 app.use(loggingMiddleware);
 
-// CORS configuration with credentials support
+// CORS configuration with credentials support for Netlify and local dev
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URL?.replace(/\/$/, ""),
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5174'
+].filter(Boolean);
+
 const corsOptions = {
-  origin: [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:5173'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
+    if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('netlify.app')) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
 };
 
@@ -94,7 +134,11 @@ mongoose
   );
 
 // 🔹 ROUTES (CLEAN ORDER)
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/users/login", authLimiter);
+app.use("/api/users/register", authLimiter);
+app.use("/api/users/forgot-password", authLimiter);
+app.use("/api/users/reset-password", authLimiter);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);

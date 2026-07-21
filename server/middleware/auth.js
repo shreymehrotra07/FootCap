@@ -13,12 +13,13 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user from database
-    // The token was generated with userId, so use decoded.userId
+    // The token was generated with userId or id, handle both safely
     const User = (await import('../models/User.js')).default;
-    const user = await User.findById(decoded.userId).select('-password');
+    const userId = decoded.userId || decoded.id;
+    const user = await User.findById(userId).select('-password');
     
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });

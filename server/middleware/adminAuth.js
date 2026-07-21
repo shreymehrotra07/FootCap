@@ -12,10 +12,11 @@ export const adminAuth = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Get user from database - use userId to match the token structure
-    const user = await User.findById(decoded.userId).select('-password');
+    // Get user from database - use userId or id fallback to match token structure
+    const userId = decoded.userId || decoded.id;
+    const user = await User.findById(userId).select('-password');
     
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });

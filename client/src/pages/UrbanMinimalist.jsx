@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { productAPI } from "../utils/api";
-import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight, FiHeart, FiShoppingBag } from "react-icons/fi";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
+import CustomSelect from "../components/CustomSelect";
 import "./MenProducts.css";
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest Arrival" },
+  { value: "popularity", label: "Popularity" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "name", label: "Name (A-Z)" }
+];
 
 // Helper function to get image URL
 function getImageUrl(imagePath) {
@@ -14,6 +25,10 @@ function getImageUrl(imagePath) {
 }
 
 function UrbanMinimalist() {
+  const { addToCart } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
+  const [toast, setToast] = useState(false);
+
   const [activeBrand, setActiveBrand] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Lifestyle");
   const [sortBy, setSortBy] = useState("newest");
@@ -37,8 +52,6 @@ function UrbanMinimalist() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Fetch products specifically for Urban Minimalist collection
-        // Filter for lifestyle, casual, minimalist design products
         const data = await productAPI.getPaginated(currentPage, productsPerPage, { 
           sort: sortBy,
           minPrice: activeMinPrice,
@@ -48,16 +61,13 @@ function UrbanMinimalist() {
           search: activeSearchQuery,
         });
         
-        // Client-side filtering for urban/minimalist products
         let filteredProducts = data.products || [];
         
-        // Filter for urban lifestyle products
         filteredProducts = filteredProducts.filter(product => {
           const nameLower = product.name.toLowerCase();
           const descLower = (product.description || "").toLowerCase();
           const categoryLower = (product.category || "").toLowerCase();
           
-          // Look for urban/minimalist keywords
           const urbanKeywords = [
             'lifestyle', 'casual', 'minimalist', 'urban', 'street', 
             'classic', 'clean', 'simple', 'everyday', 'modern', 'sleek'
@@ -69,9 +79,7 @@ function UrbanMinimalist() {
             categoryLower.includes(keyword)
           );
           
-          // Include neutral colors and classic styles
           const isClassicStyle = product.price >= 50 && product.price <= 300;
-          
           return hasUrbanKeyword || isClassicStyle;
         });
 
@@ -98,6 +106,18 @@ function UrbanMinimalist() {
 
     fetchProducts();
   }, [currentPage, sortBy, activeMinPrice, activeMaxPrice, selectedSize, selectedColor, activeSearchQuery]);
+
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await addToCart(product, 9);
+      setToast(true);
+      setTimeout(() => setToast(false), 2500);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+    }
+  };
 
   const handlePriceChange = (e, type) => {
     if (type === 'min') setMinPrice(e.target.value);
@@ -133,24 +153,14 @@ function UrbanMinimalist() {
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;
-    
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
       let start = Math.max(1, currentPage - 2);
       let end = Math.min(totalPages, start + maxVisible - 1);
-      
-      if (end - start < maxVisible - 1) {
-        start = Math.max(1, end - maxVisible + 1);
-      }
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
+      if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
     }
-    
     return pages;
   };
 
@@ -171,7 +181,7 @@ function UrbanMinimalist() {
   if (error) {
     return (
       <div className="plp">
-        <div style={{ textAlign: "center", padding: "2rem", color: "red" }}>
+        <div style={{ textAlign: "center", padding: "4rem", color: "#FF2A5F" }}>
           {error}
         </div>
       </div>
@@ -267,53 +277,22 @@ function UrbanMinimalist() {
         </aside>
 
         <section className="plp-content">
-          <div className="plp-search-container">
-            <input 
-              type="text" 
-              placeholder="Search Urban Minimalist collection..." 
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              className="plp-search-input"
-            />
-            <FiSearch className="search-icon" />
-          </div>
-
-          {/* Collection Header */}
-          <div className="collection-header">
-            <div className="collection-banner">
-              <div className="collection-info">
-                <h1>URBAN MINIMALIST</h1>
-                <p>Sleek lines for the modern explorer. Comfort meets high-end street style.</p>
-                <div className="collection-stats">
-                  <span>{totalProducts} Lifestyle Items</span>
-                  <span>•</span>
-                  <span>Street Style</span>
-                  <span>•</span>
-                  <span>Everyday Wear</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="plp-header">
             <div className="header-text">
-              <h2>Urban Collection</h2>
-              <span>Showing {products.length} of {totalProducts} minimalist lifestyle items</span>
+              <h2>Urban Minimalist</h2>
+              <span>Sleek lines for the modern explorer. Showing {products.length} of {totalProducts} items.</span>
             </div>
 
             <div className="sort-box">
               <span>Sort by:</span>
-              <select value={sortBy} onChange={(e) => {
-                setSortBy(e.target.value);
-                setCurrentPage(1);
-              }}>
-                <option value="newest">Newest Arrival</option>
-                <option value="popularity">Popularity</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="name">Name (A-Z)</option>
-              </select>
+              <CustomSelect
+                options={SORT_OPTIONS}
+                value={sortBy}
+                onChange={(val) => {
+                  setSortBy(val);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
 
@@ -325,6 +304,8 @@ function UrbanMinimalist() {
                   gridColumn: "1 / -1",
                   textAlign: "center",
                   padding: "4rem",
+                  color: "#A0A0AB",
+                  fontFamily: "'Outfit', sans-serif"
                 }}
               >
                 <h3>No products found</h3>
@@ -332,23 +313,51 @@ function UrbanMinimalist() {
             ) : (
               products.map((p, index) => {
                 const productId = p._id || p.id;
+                const brandText = p.brand || p.category || 'Urban';
+                const priceText = p.priceDisplay || `₹${p.price?.toLocaleString('en-IN')}`;
+
                 return (
-                  <Link
-                    to={`/product/${productId}`}
-                    key={productId}
-                    className="plp-card"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    {p.badge && <span className="badge">{p.badge}</span>}
-                    <div className="img-box">
-                      <img src={getImageUrl(p.image)} alt={p.name} />
-                    </div>
-                    <h5>{p.name}</h5>
-                    <p>
-                      {p.brand} • {p.gender} • {p.category}
-                    </p>
-                    <span className="price">{p.priceDisplay}</span>
-                  </Link>
+                  <div className="plp-card-wrap" key={productId}>
+                    <Link
+                      to={`/product/${productId}`}
+                      className="plp-card"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      {p.badge && <span className="badge">{p.badge}</span>}
+
+                      <div className="img-box">
+                        <img src={getImageUrl(p.image)} alt={p.name} />
+                        <div className="plp-card-overlay" />
+                        <button
+                          className="plp-quick-add"
+                          onClick={(e) => handleAddToCart(e, p)}
+                        >
+                          <FiShoppingBag /> Add to Cart
+                        </button>
+                      </div>
+
+                      <div className="plp-card-info">
+                        <p className="plp-card-brand">{brandText}</p>
+                        <h5>{p.name}</h5>
+                        <p>
+                          {p.gender ? `${p.gender} • ` : ''}{p.category}
+                        </p>
+                        <span className="price">{priceText}</span>
+                      </div>
+                    </Link>
+
+                    <button
+                      className={`plp-wish-btn${isWishlisted(productId) ? ' active' : ''}`}
+                      onClick={(e) => { 
+                        e.preventDefault(); 
+                        e.stopPropagation(); 
+                        toggleWishlist(p); 
+                      }}
+                      title="Add to wishlist"
+                    >
+                      <FiHeart />
+                    </button>
+                  </div>
                 );
               })
             )}
@@ -386,6 +395,8 @@ function UrbanMinimalist() {
           )}
         </section>
       </div>
+
+      <div className={`plp-toast${toast ? ' visible' : ''}`}>✓ Added to Cart</div>
       <Footer />
     </>
   );

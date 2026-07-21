@@ -1,7 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { getAdminOrders, updateOrderStatus, getOrderById, deleteOrder } from "../utils/adminAPI";
-import { FiChevronLeft, FiChevronRight, FiRefreshCw, FiEye, FiEdit2, FiTrash2 } from "react-icons/fi";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiRefreshCw,
+  FiEye,
+  FiEdit2,
+  FiTrash2,
+  FiSearch,
+  FiCreditCard,
+  FiUser,
+  FiMapPin,
+  FiPhone,
+  FiCalendar,
+  FiX
+} from "react-icons/fi";
+
+function getImageUrl(imagePath) {
+  if (!imagePath) return '';
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+  const filename = imagePath.split('/').pop();
+  return new URL(`../assets/images/${filename}`, import.meta.url).href;
+}
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -10,6 +32,7 @@ function AdminOrders() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     status: "all"
   });
@@ -21,9 +44,9 @@ function AdminOrders() {
     try {
       setLoading(true);
       const response = await getAdminOrders(currentPage, 20, filters.status);
-      setOrders(response.orders);
-      setTotalPages(response.totalPages);
-      setTotalOrders(response.totalOrders);
+      setOrders(response.orders || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalOrders(response.totalOrders || 0);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching orders:", err);
@@ -32,26 +55,19 @@ function AdminOrders() {
     }
   };
 
-  // Fetch orders when component mounts or filters change
   useEffect(() => {
     fetchOrders();
   }, [currentPage, filters]);
 
-  // Handle filter changes
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    setCurrentPage(1); // Reset to first page when filters change
+  const handleFilterChange = (status) => {
+    setFilters({ status });
+    setCurrentPage(1);
   };
 
-  // Handle order status update
   const handleStatusUpdate = async (orderId, newStatus) => {
     if (window.confirm(`Are you sure you want to update order status to ${newStatus}?`)) {
       try {
         await updateOrderStatus(orderId, newStatus);
-        // Refresh the order list
         fetchOrders();
       } catch (err) {
         alert(`Error updating order status: ${err.message}`);
@@ -59,7 +75,6 @@ function AdminOrders() {
     }
   };
 
-  // View order details
   const viewOrderDetails = async (orderId) => {
     try {
       const order = await getOrderById(orderId);
@@ -70,34 +85,27 @@ function AdminOrders() {
     }
   };
 
-  // Handle order deletion
   const handleDelete = async (orderId) => {
-    console.log('Delete button clicked for order:', orderId);
     if (window.confirm("Are you sure you want to delete this order?")) {
       try {
-        console.log('Confirmed deletion, calling deleteOrder...');
-        const result = await deleteOrder(orderId);
-        console.log('Delete operation successful:', result);
-        // Refresh the order list
+        await deleteOrder(orderId);
         fetchOrders();
       } catch (err) {
-        console.error('Error in handleDelete:', err);
         alert(`Error deleting order: ${err.message}`);
       }
     }
   };
 
-  // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
-    }).format(amount);
+    }).format(amount || 0);
   };
 
-  // Format date
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
@@ -105,7 +113,6 @@ function AdminOrders() {
     });
   };
 
-  // Get status color class
   const getStatusClass = (status) => {
     switch (status) {
       case 'Pending':
@@ -119,40 +126,60 @@ function AdminOrders() {
       case 'Cancelled':
         return 'status-cancelled';
       default:
-        return 'status-default';
+        return 'status-pending';
     }
   };
 
-  // Close details modal
   const closeDetails = () => {
     setShowDetails(false);
     setSelectedOrder(null);
   };
 
+  // Filter orders by search query
+  const filteredOrders = orders.filter((order) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const orderId = (order.orderId || "").toLowerCase();
+    const name = (order.userId?.name || order.deliveryDetails?.name || "").toLowerCase();
+    const email = (order.userId?.email || "").toLowerCase();
+    return orderId.includes(q) || name.includes(q) || email.includes(q);
+  });
+
   return (
-    <div className="admin-content">
+    <div className="admin-orders">
       <div className="admin-page-header">
-        <h1>Order Management</h1>
+        <div>
+          <h1>Order Management</h1>
+          <p className="subtitle">Track customer orders, manage shipments, and update payment statuses</p>
+        </div>
+        <button className="btn btn-outline refresh-btn" onClick={fetchOrders}>
+          <FiRefreshCw className={loading ? "spinner" : ""} /> Refresh
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="admin-filters">
-        <div className="filter-group">
-          <div className="filter-item">
-            <label htmlFor="status">Status</label>
-            <select
-              id="status"
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
+
+      {/* FILTER & SEARCH BAR */}
+      <div className="admin-filters-bar">
+        <div className="search-input-box">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search by Order ID, Customer Name, or Email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="filter-pills-group">
+          {['all', 'Pending', 'Paid', 'Shipped', 'Delivered', 'Cancelled'].map((st) => (
+            <button
+              key={st}
+              className={`filter-pill-btn ${filters.status === st ? 'active' : ''}`}
+              onClick={() => handleFilterChange(st)}
             >
-              <option value="all">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Paid">Paid</option>
-              <option value="Shipped">Shipped</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
+              {st === 'all' ? 'All Statuses' : st}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -182,80 +209,100 @@ function AdminOrders() {
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
-                  <th>Email</th>
-                  <th>Total</th>
+                  <th>Total Amount</th>
                   <th>Payment</th>
                   <th>Status</th>
                   <th>Date</th>
-                  <th>Actions</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.length === 0 ? (
+                {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="no-data">
-                      No orders found
+                    <td colSpan="7" className="no-data">
+                      No orders found matching your criteria.
                     </td>
                   </tr>
                 ) : (
-                  orders.map(order => (
-                    <tr key={order.orderId}>
-                      <td className="order-id">
-                        {order.orderId}
-                      </td>
-                      <td>{order.userId?.name || 'N/A'}</td>
-                      <td>{order.userId?.email || 'N/A'}</td>
-                      <td>{formatCurrency(order.totalAmount)}</td>
-                      <td>
-                        <div className="payment-info">
-                          <span className="payment-method">
+                  filteredOrders.map((order) => {
+                    const customerName = order.userId?.name || order.deliveryDetails?.name || 'Customer';
+                    const customerEmail = order.userId?.email || 'N/A';
+                    const initials = customerName.substring(0, 2).toUpperCase();
+
+                    return (
+                      <tr key={order.orderId || order._id}>
+                        <td className="order-id-cell">
+                          <span className="order-id-tag">#{order.orderId}</span>
+                        </td>
+                        <td>
+                          <div className="customer-cell">
+                            <div className="user-avatar-initials">{initials}</div>
+                            <div className="user-details">
+                              <span className="user-name">{customerName}</span>
+                              <span className="user-email">{customerEmail}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="order-total-cell">
+                          {formatCurrency(order.totalAmount)}
+                        </td>
+                        <td>
+                          <span className={`payment-pill ${order.paymentMethod}`}>
+                            <FiCreditCard />
                             {order.paymentMethod === 'razorpay' ? 'Razorpay' : 
                              order.paymentMethod === 'cod' ? 'COD' : 'Card'}
                           </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${getStatusClass(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td>{formatDate(order.createdAt)}</td>
-                      <td className="actions-cell">
-                        <button
-                          className="btn btn-sm btn-outline"
-                          onClick={() => viewOrderDetails(order.orderId)}
-                          title="View Details"
-                        >
-                          <FiEye />
-                        </button>
-                        <div className="dropdown">
-                          <button className="btn btn-sm btn-outline dropdown-toggle">
-                            <FiEdit2 /> Update
+                        </td>
+                        <td>
+                          <span className={`status-badge ${getStatusClass(order.status)}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="date-cell">{formatDate(order.createdAt)}</td>
+                        <td className="actions-cell">
+                          <button
+                            className="action-icon-btn view"
+                            onClick={() => viewOrderDetails(order.orderId)}
+                            title="View Details"
+                          >
+                            <FiEye />
                           </button>
-                          <div className="dropdown-menu">
-                            {['Pending', 'Paid', 'Shipped', 'Delivered', 'Cancelled']
-                              .filter(status => status !== order.status)
-                              .map(status => (
-                                <button
-                                  key={status}
-                                  className="dropdown-item"
-                                  onClick={() => handleStatusUpdate(order.orderId, status)}
-                                >
-                                  {status}
-                                </button>
-                              ))}
+                          
+                          <div className="status-dropdown-wrapper">
+                            <button
+                              className="action-icon-btn edit"
+                              title="Change Status"
+                            >
+                              <FiEdit2 />
+                            </button>
+                            <div className="status-dropdown-menu">
+                              <div className="dropdown-header-title">Change Status</div>
+                              {['Pending', 'Paid', 'Shipped', 'Delivered', 'Cancelled']
+                                .filter((s) => s !== order.status)
+                                .map((s) => (
+                                  <button
+                                    key={s}
+                                    className="status-dropdown-item"
+                                    onClick={() => handleStatusUpdate(order.orderId, s)}
+                                  >
+                                    <span className={`status-dot ${s.toLowerCase()}`}></span>
+                                    Set to {s}
+                                  </button>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(order.orderId)}
-                          title="Delete Order"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+
+                          <button
+                            className="action-icon-btn delete"
+                            onClick={() => handleDelete(order.orderId)}
+                            title="Delete Order"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -266,7 +313,7 @@ function AdminOrders() {
             <div className="pagination">
               <button
                 className="btn btn-outline"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 <FiChevronLeft /> Previous
@@ -278,7 +325,7 @@ function AdminOrders() {
               
               <button
                 className="btn btn-outline"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
               >
                 Next <FiChevronRight />
@@ -291,116 +338,108 @@ function AdminOrders() {
       {/* Order Details Modal */}
       {showDetails && selectedOrder && (
         <div className="modal-overlay" onClick={closeDetails}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Order Details</h2>
+              <div>
+                <h2>Order Details</h2>
+                <p>Order ID: <strong>#{selectedOrder.orderId || selectedOrder._id}</strong> • Placed on {formatDate(selectedOrder.createdAt)}</p>
+              </div>
               <button className="modal-close" onClick={closeDetails}>
-                &times;
+                <FiX />
               </button>
             </div>
+
             <div className="modal-body">
-              <div className="order-details-grid">
-                <div className="order-summary">
-                  <h3>Order Summary</h3>
-                  <div className="detail-item">
-                    <strong>Order ID:</strong>
-                    <span>#{selectedOrder.orderId || selectedOrder._id}</span>
+              <div className="admin-modal-grid">
+                {/* CUSTOMER & DELIVERY CARD */}
+                <div className="admin-info-card">
+                  <div className="card-header-sm">
+                    <FiMapPin />
+                    <h3>Delivery & Customer Details</h3>
                   </div>
-                  <div className="detail-item">
-                    <strong>Status:</strong>
+                  <p className="card-primary-title">
+                    <FiUser /> {selectedOrder.userId?.name || selectedOrder.deliveryDetails?.name || 'N/A'}
+                  </p>
+                  <p className="card-sub-text">{selectedOrder.userId?.email || 'No email provided'}</p>
+                  <p className="card-sub-text"><FiPhone /> {selectedOrder.deliveryDetails?.phone || selectedOrder.userId?.phone || 'N/A'}</p>
+                  <div className="address-box">
+                    <span>{selectedOrder.deliveryDetails?.address || 'N/A'}, {selectedOrder.deliveryDetails?.city || 'N/A'} - {selectedOrder.deliveryDetails?.pincode || 'N/A'}</span>
+                  </div>
+                </div>
+
+                {/* PAYMENT & STATUS CARD */}
+                <div className="admin-info-card">
+                  <div className="card-header-sm">
+                    <FiCreditCard />
+                    <h3>Payment & Fulfillment</h3>
+                  </div>
+                  <div className="detail-row">
+                    <span>Order Status:</span>
                     <span className={`status-badge ${getStatusClass(selectedOrder.status)}`}>
                       {selectedOrder.status}
                     </span>
                   </div>
-                  <div className="detail-item">
-                    <strong>Payment Method:</strong>
-                    <span className="payment-method-badge">
-                      {selectedOrder.paymentMethod === 'razorpay' ? 'Razorpay' : 
-                       selectedOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Card'}
-                    </span>
+                  <div className="detail-row">
+                    <span>Payment Method:</span>
+                    <span className="pay-tag">{selectedOrder.paymentMethod === 'razorpay' ? 'Online Payment (Razorpay)' : 'Cash on Delivery'}</span>
                   </div>
                   {selectedOrder.paymentMethod === 'razorpay' && (
                     <>
-                      <div className="detail-item">
-                        <strong>Payment Status:</strong>
-                        <span className={`payment-status-badge ${selectedOrder.paymentStatus}`}>
-                          {selectedOrder.paymentStatus?.toUpperCase() || 'N/A'}
-                        </span>
+                      <div className="detail-row">
+                        <span>Payment Status:</span>
+                        <span className="status-highlight">{selectedOrder.paymentStatus?.toUpperCase() || 'PAID'}</span>
                       </div>
-                      <div className="detail-item">
-                        <strong>Payment ID:</strong>
-                        <span className="payment-id-text">{selectedOrder.paymentId || 'N/A'}</span>
+                      <div className="detail-row">
+                        <span>Payment ID:</span>
+                        <span className="code-text">{selectedOrder.paymentId || 'N/A'}</span>
                       </div>
-                      <div className="detail-item">
-                        <strong>Razorpay Order ID:</strong>
-                        <span className="payment-id-text">{selectedOrder.razorpayOrderId || 'N/A'}</span>
+                      <div className="detail-row">
+                        <span>Razorpay Order ID:</span>
+                        <span className="code-text">{selectedOrder.razorpayOrderId || 'N/A'}</span>
                       </div>
                     </>
                   )}
-                  <div className="detail-item">
-                    <strong>Date:</strong>
-                    <span>{new Date(selectedOrder.createdAt).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}</span>
-                  </div>
                 </div>
+              </div>
 
-                <div className="customer-info">
-                  <h3>Customer Information</h3>
-                  <div className="detail-item">
-                    <strong>Name:</strong>
-                    <span>{selectedOrder.userId?.name || selectedOrder.deliveryDetails?.name || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <strong>Email:</strong>
-                    <span>{selectedOrder.userId?.email || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <strong>Phone:</strong>
-                    <span>{selectedOrder.deliveryDetails?.phone || selectedOrder.userId?.phone || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <strong>Address:</strong>
-                    <span>{selectedOrder.deliveryDetails?.address || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <strong>City:</strong>
-                    <span>{selectedOrder.deliveryDetails?.city || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <strong>Pincode:</strong>
-                    <span>{selectedOrder.deliveryDetails?.pincode || 'N/A'}</span>
-                  </div>
-                </div>
+              {/* ORDER ITEMS LIST */}
+              <div className="admin-modal-items">
+                <h3>Ordered Items</h3>
+                <div className="modal-items-table">
+                  {selectedOrder.items?.map((item, index) => {
+                    const itemName = item.name || item.productId?.name || 'Footwear Product';
+                    const itemImage = item.image || item.productId?.image;
 
-                <div className="order-items">
-                  <h3>Items</h3>
-                  <div className="items-list">
-                    {selectedOrder.items?.map((item, index) => (
-                      <div key={index} className="item-row">
-                        <div className="item-info">
-                          <img 
-                            src={item.productId?.image || '/src/assets/images/default-product.jpg'} 
-                            alt={item.productId?.name}
-                            className="item-thumb"
-                          />
-                          <div className="item-text">
-                            <h4>{item.productId?.name}</h4>
-                            <p>Size: {item.size}</p>
-                            <p>Qty: {item.quantity}</p>
+                    return (
+                      <div key={index} className="modal-product-row">
+                        <div className="modal-prod-img">
+                          <img src={getImageUrl(itemImage)} alt={itemName} />
+                        </div>
+                        <div className="modal-prod-info">
+                          <h4>{itemName}</h4>
+                          <div className="modal-tags">
+                            <span>Size: UK {item.size}</span>
+                            <span>Qty: {item.quantity || item.qty}</span>
                           </div>
                         </div>
-                        <div className="item-price">
-                          {formatCurrency(item.price * item.quantity)}
+                        <div className="modal-prod-price">
+                          {formatCurrency(item.price * (item.quantity || item.qty || 1))}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* TOTAL COST SUMMARY */}
+              <div className="admin-modal-summary">
+                <div className="summary-line">
+                  <span>Grand Total</span>
+                  <strong>{formatCurrency(selectedOrder.totalAmount)}</strong>
                 </div>
               </div>
             </div>
+
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={closeDetails}>
                 Close

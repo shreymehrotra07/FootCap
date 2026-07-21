@@ -126,24 +126,19 @@ function AdminProducts() {
   };
 
   return (
-    <div className="admin-content">
+    <div className="admin-products">
       <div className="admin-page-header">
         <div className="page-title">
           <h1>Product Management</h1>
           <p>Manage your product catalog and inventory</p>
         </div>
-        <div className="page-actions">
-          <Link to="/admin/products/add" className="btn btn-primary">
-            <FiPlus /> Add Product
-          </Link>
-        </div>
       </div>
 
       {/* Filters */}
       <div className="admin-filters">
-        <div className="filter-group">
-          <div className="filter-item">
-            <label htmlFor="search">Search Products</label>
+        <div className="search-row">
+          <div className="filter-item full-width">
+            <label htmlFor="search">SEARCH PRODUCTS</label>
             <div className="filter-input-group">
               <input
                 id="search"
@@ -162,9 +157,11 @@ function AdminProducts() {
               )}
             </div>
           </div>
+        </div>
 
+        <div className="filter-selects-row">
           <div className="filter-item">
-            <label htmlFor="brand">Brand</label>
+            <label htmlFor="brand">BRAND</label>
             <select
               id="brand"
               value={filters.brand}
@@ -178,7 +175,7 @@ function AdminProducts() {
           </div>
 
           <div className="filter-item">
-            <label htmlFor="category">Category</label>
+            <label htmlFor="category">CATEGORY</label>
             <select
               id="category"
               value={filters.category}
@@ -192,7 +189,7 @@ function AdminProducts() {
           </div>
 
           <div className="filter-item">
-            <label htmlFor="gender">Gender</label>
+            <label htmlFor="gender">GENDER</label>
             <select
               id="gender"
               value={filters.gender}
