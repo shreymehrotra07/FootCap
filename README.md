@@ -30,7 +30,7 @@ https://footcap-backend.onrender.com/
 
 | Cart | Admin Login |
 |------|-----------------|
-| ![]([screenshots/cart.png](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_162633_pxfxys)) | ![](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_163937_jmhfzj) |
+| ![](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_162633_pxfxys)) | ![](https://res.cloudinary.com/xpfcyv3b/image/upload/f_auto,q_auto/Screenshot_2026-07-21_163937_jmhfzj) |
 
 ---
 
